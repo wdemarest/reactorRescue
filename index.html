@@ -1,0 +1,552 @@
+<html>
+	<head>
+		<style type="text/css">
+			#canvas{
+				width: 100%;
+				height: 120%;
+			}
+			#titleScreen{
+				margin-left: 100;
+			}
+			#title{
+				font-size: 500%;
+			}
+			#playButton{
+				width: 100px;
+       			height: 50px;
+			}
+		</style>
+		<title> Blower Game </title>
+		<link rel="stylesheet" type="text/css" href="minireset.css">
+		<script
+  src="https://code.jquery.com/jquery-3.3.1.js"
+  integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60="
+  crossorigin="anonymous"></script>
+		<script>
+			/*
+				
+			*/
+			let ruleSets = {
+				normal: {
+					blowerCount: 0,
+					dotDensity: 0.1,
+					boardSize: 2000,
+					speedMod: 3,
+					blowRange: 200,
+					blowForce: 0.1,
+				}
+			}
+
+			let canvasWidth;
+			let canvasHeight;
+
+			let Rules = ruleSets.normal;
+
+ 			function degToRad(deg){
+				return deg/180*Math.PI;
+			}
+			/*
+			function normalizeRads(rad){
+				while(Math.abs(rad) > Math.PI){
+					if(rad > 0){
+						rad -= Math.PI*2;
+					}else{
+						rad += Math.PI*2;
+					}
+				}
+				return rad;
+			}
+			*/
+			function calcDist(x1, y1, x2, y2){
+				let dx = (x1-x2);
+				let dy = (y1-y2);
+				return Math.abs(Math.sqrt(Math.pow(dx, 2)+Math.pow(dy, 2)))
+			}
+			function askName(){
+				let name = undefined;
+				while(name == undefined){
+					name = prompt("What's your worm's name?", generateName())
+				}
+				return name;
+			}
+			function pickRandom(list){
+				let seed = Math.floor(Math.random()*list.length);
+				return list[seed]
+			}
+			function calcAngle(x1, y1, x2, y2){
+				let dx = (x2-x1);
+				let dy = (y2-y1);
+				let rad = Math.atan2(dy,dx)
+				return rad;
+			}
+			function generateName(){
+				let name = "";
+				
+				let prefixList = ["The", "The Great", "Ultra", "Mega", "Epic", "Crazy", "Sir", "Mr.", "Madam", "Edgy", "Speedy", "Derpy", "Fluffy", "King", "Satanic", "Grumpy", "Dumpster", "Constipated", "Genius", "'lil", "Deadly", "Lord", "The Dark Lord"]
+				let affixList = ["Kitten", "Worm Dude", "Butt", "Worm", "Wormatron", "Dude", "Donut Worm", "Fluffykins", "Idiot", "Dragon", "Bob", "Joe", "Turd", "God"]
+				let suffixList = ["The Great", "Mc Wormface", "The Worm"]
+				
+				let prefix = (Math.random() > (suffixList.length/prefixList.length) ? true : false)
+				if(prefix){
+					name += pickRandom(prefixList)
+					name += " ";
+					name += pickRandom(affixList)
+				}else{
+					name += pickRandom(affixList)
+					name += " ";
+					name += pickRandom(suffixList)
+				}
+
+				if((Math.random() > 0.95 ? true : false)){
+					name = "Visit playCandyhop.com"
+				}
+
+				return name;
+			}
+			class Board{
+				constructor(size){
+					this.size = size;
+				}
+				pickRandomLocation(){
+					return Math.random()*this.size-(this.size/2)
+				}
+			}
+ 			class Sim{
+				constructor(board, name){
+ 					this.addObject = (x, y, type) => {
+ 						if(type == "dot"){
+							return this.objectList.push(new Dot(board, x, y))
+						}
+					}
+					this.blowerList = [];
+					this.blowerList.push (new Blower(board, 0, 0, "human", name));
+ 					this.nowPrior = null;
+ 					this.board = board;
+ 					for (let i = 0; i < Rules.blowerCount; i++) {
+						let x = board.pickRandomLocation();
+						let y = board.pickRandomLocation();
+					
+						this.blowerList.push (new Blower(board, x, y, "AI"));
+					}
+ 					this.blower = this.blowerList[0];
+ 					this.objectList = [];
+ 					for (let i = 0; i < (Rules.dotDensity*(board.size^2)); i++) {
+						let x = board.pickRandomLocation();
+						let y = board.pickRandomLocation();
+						this.addObject(x, y, "dot")
+					}
+ 				}
+ 				tick(dt){
+					this.blowerList.forEach(blower => blower.tick(dt, this.objectList))
+					this.objectList.forEach(object => object.tick())
+				}
+ 				objectsBlown(){
+					this.blowerList.forEach(blower => {
+						if(blower.blowing){
+							for(let i = 0; i < this.objectList.length; i++){
+								let object = this.objectList[i];
+								let angle = calcAngle(blower.x, blower.y, object.x, object.y);
+								let blowArc = degToRad(45);
+								let dist = calcDist(blower.x, blower.y, object.x, object.y);
+								if(blower.pointingRad < angle+blowArc && blower.pointingRad > angle-blowArc && dist < Rules.blowRange){
+									let velIncrease = (Rules.blowRange-calcDist(blower.x, blower.y, object.x, object.y))*Rules.blowForce;
+									object.xVel -= velIncrease*((blower.x - object.x)/dist)
+									object.yVel -= velIncrease*((blower.y - object.y)/dist)
+									object.lit = true;
+								}else{
+									object.lit = false;
+								}
+							}
+						}
+					})
+				}
+ 				objectsTouched(){
+					this.blowerList.forEach(blower => {
+						for(let i = 0; i < this.objectList.length; i++){
+							let object = this.objectList[i];
+							if(Math.abs(blower.x - object.x)+Math.abs(blower.y - object.y) < 27){
+								blower.applyEffect(object.effect)
+								this.objectList.splice(i, 1)
+							}
+						}
+					})
+				}
+			}
+			class Object{
+				constructor(board, x, y){
+					this.board = board;
+					this.x = x;
+					this.y = y;
+					this.xVel = Math.random()-0.5;
+					this.yVel = Math.random()-0.5;
+					this.type;
+					this.width;
+					this.height;
+					this.effect;
+				}
+				tick(){
+					this.x += this.xVel;
+					this.y += this.yVel;
+
+					this.xVel *= 1
+					this.yVel *= 1
+
+					if(this.x > this.board.size/2){
+						this.x -= this.board.size;
+					}
+					if(this.x < -this.board.size/2){
+						this.x += this.board.size;
+					}
+					if(this.y > this.board.size/2){
+						this.y -= this.board.size;
+					}
+					if(this.y < -this.board.size/2){
+						this.y += this.board.size;
+					}
+				}
+			}
+
+ 			class Dot extends Object{
+				constructor(board, x, y){
+					super(board, x, y)
+					this.type = "dot";
+					this.width = 50;
+					this.height = 50;
+					this.effect = {type: "damage", amount: 1};
+				}
+			}
+
+ 			class Blower{
+				constructor(board, x, y, control, name){
+					this.board = board;
+					this.x = x;
+					this.y = y;
+					this.control = control;
+					this.pointingRad = (Math.random()*Math.PI*2)-Math.PI;
+					this.speed = 10;
+					this.name = (name ? name : generateName())
+					this.body = [];
+					this.health = 10;
+				}
+				moveTick(dt){
+					if(this.x > this.board.size/2){
+						this.x -= 8;
+					}
+					if(this.x < -this.board.size/2){
+						this.x += 8;
+					}
+					if(this.y > this.board.size/2){
+						this.y -= 8;
+					}
+					if(this.y < -this.board.size/2){
+						this.y += 8;
+					}
+				}
+				applyEffect(effect){
+					if(effect.type = "damage"){
+						this.health -= effect.amount;
+					}
+				}
+				ai(objectList){
+					let targetX = 0
+					let targetY = 0
+					let targetDist = 99999
+					objectList.forEach(object => {
+						let dist = calcDist(object.x, this.x, object.y, this.y)
+						if(dist < targetDist){
+							targetDist = dist;
+							targetX = object.x;
+							targetY = object.y;
+						}
+					})
+					this.setTarget(targetX, targetY)
+				}
+				tick(dt, objectList){
+					if(!this.dead){
+						if(this.control == "AI"){
+							//this.ai(objectList);
+						}
+						this.moveTick(dt);
+						if(this.health < 1){
+							this.dead = true;
+						}
+					}
+				}
+				grow(amount){
+					this.length += amount*Rules.growSpeedMod*(this.speed+this.tempSpeed)/100;
+				}
+				speedBoost(amount){
+					this.tempSpeed += amount*Rules.speedBoostMod;
+				}
+				strengthen(amount){
+					this.strength += amount*Rules.strengthAddMod;
+				}
+				setTarget(x, y){
+					this.pointingRad = calcAngle(this.x, this.y, x, y);
+				}
+			}
+ 			//CONTROL
+			function initControls(blower){
+				$( document ).mousedown(function( event ) {
+					mouseX = event.pageX+blower.x-canvasWidth/2;
+					mouseY = event.pageY+blower.y-canvasHeight/2;
+					blower.setTarget(mouseX, mouseY)
+					blower.blowing = true;
+				});
+				$( document ).mouseup(function( event ) {
+					//blower.blowing = false;
+				});
+				$( document ).keypress(function( event ) {
+					if(event.key == "w"){
+						blower.y -= blower.speed;
+					}
+					if(event.key == "s"){
+						blower.y += blower.speed;
+					}
+					if(event.key == "a"){
+						blower.x -= blower.speed;
+					}
+					if(event.key == "d"){
+						blower.x += blower.speed;
+					}
+					
+				});
+			}
+ 			//VIEW
+ 			let ImageURLs = {
+				blower: 'images/roomba2.png',
+				dot: 'images/dot.png',
+				glowyDot: 'images/glowyDot.png',
+				wind: 'images/wind.png',
+				background: 'images/black.png',
+				//minimapBackground: 'images/minimapBackground.jpg',
+			};
+ 			let Img = {};
+ 			class View{
+				constructor(){
+ 				}
+				
+ 				imageLoad(imageURLs, target, callbackFn){
+					let imagesRequested = 0;
+					let imagesLoaded = 0;
+					for(let key in imageURLs){
+						let image = imageURLs[key];
+						target[key] = new Image();
+						target[key].onload = function(){
+							imagesLoaded ++
+						};
+						target[key].src = image;
+						imagesRequested ++;
+					}
+ 					let handle = setInterval( () => {
+						if( imagesLoaded >= imagesRequested ) {
+							console.assert(imagesLoaded == imagesRequested)
+							clearInterval(handle);
+							//callbackFn();
+						}
+					},1)
+				}
+ 				myCanvas(canvasId, board){
+					var canvas = document.getElementById(canvasId);
+					var context = canvas.getContext('2d');
+					
+					context.draw = function(spec, imageObj, camera){
+						let drawX = spec.x-(camera.x-canvasWidth/2);
+						let drawY = spec.y-(camera.y-canvasHeight/2);
+						if(spec.xAnchor && spec.yAnchor){
+							drawX -= spec.width*spec.xAnchor;
+							drawY -= spec.height*spec.yAnchor;
+						}
+						this.drawImage(imageObj, drawX, drawY, spec.width, spec.height);
+					}.bind(context)
+ 					context.clear = function(spec, imageObj){
+						this.drawImage(Img.background, 0, 0, 1200, 800);
+					}.bind(context)
+					context.clearMinimap = function(spec, imageObj){
+						this.drawImage(Img.background, 0, 0, 280, 260);
+					}.bind(context)
+					return context
+				}
+ 				render(context, sim){
+					context.clear();
+ 					let camera = {};
+ 					let blowerSpec = {x: 100, y: 100, width: 50, height: 50, xAnchor: 0.5, yAnchor: 0.5};
+ 					camera.x = sim.blower.x;
+					camera.y = sim.blower.y;
+ 					for(let i = 0; i < sim.objectList.length; i++){
+						let objectSpec = {
+							x: sim.objectList[i].x,
+							y: sim.objectList[i].y,
+							width: sim.objectList[i].width,
+							height: sim.objectList[i].height,
+							xAnchor: 0.5,
+							yAnchor: 0.5
+						};
+						
+						context.draw(objectSpec, Img[sim.objectList[i].type], camera)
+					}
+ 					sim.blowerList.forEach(blower => {
+						blowerSpec.x = blower.x;
+						blowerSpec.y = blower.y;
+
+						if(blower.blowing){
+							//context.rotate(degToRad(0));
+							//context.draw(windSpec, Img.wind, camera);
+						}
+
+						context.draw(blowerSpec, Img.blower, camera);
+					})
+
+					context.font = "20px Arial";
+					context.fillStyle = "white";
+					context.fillText(sim.blower.name, 530, 405);
+				}
+				renderMinimap(context, sim){
+					context.clearMinimap()
+					
+					let camera = {};
+ 					camera.x = 100;
+					camera.y = 100;
+
+					let boardSizeMod = (sim.board.size/2000)
+
+ 					for(let i = 0; i < sim.objectList.length; i++){
+						let objectSpec = {x: sim.objectList[i].x/10, y: sim.objectList[i].y/10, width: (sim.objectList[i].width/10)/boardSizeMod, height: (sim.objectList[i].height/10)/boardSizeMod, xAnchor: 0.5, yAnchor: 0.5};
+						
+						let drawX = (objectSpec.x+(120*boardSizeMod))/boardSizeMod;
+						let drawY = (objectSpec.y+(130*boardSizeMod))/boardSizeMod;
+						
+						if(objectSpec.xAnchor && objectSpec.yAnchor){
+							drawX -= objectSpec.width*objectSpec.xAnchor;
+							drawY -= objectSpec.height*objectSpec.yAnchor;
+						}
+
+						if(sim.objectList[i].lit){
+							context.drawImage(Img.glowyDot, drawX, drawY, objectSpec.width, objectSpec.height);
+						}else{
+							context.drawImage(Img[sim.objectList[i].type], drawX, drawY, objectSpec.width, objectSpec.height);
+						}
+					}
+
+					let blowerSpec = {x: sim.blowerList[0].x/10, y: sim.blowerList[0].y/10, width: 10, height: 10, xAnchor: 0.5, yAnchor: 0.5};
+
+					let drawX = (blowerSpec.x+(120*boardSizeMod))/boardSizeMod;
+					let drawY = (blowerSpec.y+(130*boardSizeMod))/boardSizeMod;
+					
+					if(blowerSpec.xAnchor && blowerSpec.yAnchor){
+						drawX -= blowerSpec.width*blowerSpec.xAnchor;
+						drawY -= blowerSpec.height*blowerSpec.yAnchor;
+					}
+					context.drawImage(Img.blower, drawX, drawY, blowerSpec.width, blowerSpec.height);
+					
+				}
+			}
+ 			//ORGANIZATION
+ 			function GameOver(sim, handleSim, handleView){
+ 				let leaderBoard = ""
+ 				leaderBoard += "<b> Name                     | Length</b>\n"
+ 				
+ 				for(let i = 0; i < sim.blowerList.length; i++){
+ 					let blower = sim.blowerList[i];
+ 					leaderBoard += " "+sim.blowerList[i].name;
+ 					for(let j = 0; j < 25 - sim.blowerList[i].name.length; j++){
+ 						leaderBoard += " "
+ 					}
+ 					leaderBoard += "| "+Math.floor(blower.length)+"\n";
+ 				}
+
+ 				clearInterval(handleSim)
+				clearInterval(handleView)
+
+
+ 				$("#leaderBoard").html(leaderBoard);
+ 				$("#leaderBoard").show()
+ 				$("#titleScreen").show()
+ 				//$("#playAgain").show()
+ 				$("#canvas").hide()
+ 				$("#stats").hide()
+ 			}
+
+ 			function Main(){
+ 				$("#leaderBoard").hide()
+				$("#playAgain").hide()
+				$("#canvas").show()
+				$("#stats").show()
+				let view = new View();
+ 				let board = new Board(Rules.boardSize);
+ 				let context = view.myCanvas('myCanvas', board);
+ 				let sim = new Sim(board, $("#nameInput").val());
+ 				initControls(sim.blower);
+ 				function tickSim(){
+ 					if(sim.blower.dead){
+ 						GameOver(sim, handleSim, handleView)
+ 					}
+
+					sim.timeSinceLastSim = 0;
+					let dt;
+					let now = Date.now();
+					if(sim.nowPrior === null){
+						dt = 1.0/60
+					}else{
+						dt = (now - sim.nowPrior)/1000;
+					}
+					sim.nowPrior = now;
+					sim.timeSinceLastSim += dt;
+					while(sim.timeSinceLastSim > 1/60){
+						sim.objectsBlown(sim.blower);
+						sim.objectsTouched();
+						//$("#stats").html(" Length: "+(Math.floor(sim.blower.length))+" Speed: "+(Math.floor((sim.blower.speed+sim.blower.tempSpeed)))+" Strength: "+sim.blower.strength);
+						sim.tick(1/60, sim.objectList);
+						sim.timeSinceLastSim -= 1/60;
+					}
+				}
+ 				function tickView(){
+					view.render(context, sim);
+					view.renderMinimap(context, sim);
+				}
+
+				$("#titleScreen").hide()
+
+ 				let handleSim = setInterval(tickSim, (1000/60))
+				let handleView = setInterval(tickView, (1000/60))
+			}
+ 			$( document ).ready(function(){	
+ 				canvasWidth = $("#canvas").width();
+				canvasHeight = $("#canvas").height();
+				console.assert(canvasWidth > 0)
+				console.assert(canvasHeight > 0)
+
+				let view = new View();
+				view.imageLoad(ImageURLs, Img, Main);
+			});
+			
+			
+    </script>
+  </body>
+</html>        
+		</script>
+	</head>
+	<body>
+		<div id="titleScreen">
+			<h1 id="title">
+				Blower Game
+			</h1>
+			<form>
+				Name: <input type="text" id="nameInput"></input>
+			</form>
+			<button id="playButton" onClick="Main()">
+				Play!
+			</button>
+			<pre id="leaderBoard">
+
+			</pre>
+		</div>
+		<div id="stats">
+			
+		</div>
+		<div id="canvas">
+			<canvas id="myCanvas" width="1000" height="790"></canvas>
+		</div>
+		<button id="playAgain" onclick="Main()">Play Again</button>
+	</body>
+</html>
