@@ -46,6 +46,8 @@
 
 			let LevelList = MakeLevelList();
 
+ 			let level = 0;
+
 			Rules = Object.assign(Rules, ruleSets.normal)
 
 
@@ -141,8 +143,6 @@
 					}
 					this.nowPrior = null;
  					this.board = board;
-
- 					let level = 1;
 
  					let levelPlan = LevelList[level]
 
@@ -577,18 +577,14 @@
  				clearInterval(handleSim)
 				clearInterval(handleView)
 
-
- 				$("#leaderBoard").html(leaderBoard);
- 				$("#leaderBoard").show()
- 				$("#titleScreen").show()
+				$("#titleScreen").show()
  				//$("#playAgain").show()
  				$("#canvas").hide()
  				$("#stats").hide()
  			}
 
  			function Main(){
- 				$("#leaderBoard").hide()
-				$("#playAgain").hide()
+ 				$("#playAgain").hide()
 				$("#canvas").show()
 				$("#stats").show()
 				let view = new View();
@@ -597,7 +593,8 @@
  				let sim = new Sim(board, $("#nameInput").val());
  				initControls(sim.blower);
  				function tickSim(){
- 					if(sim.blower.dead){
+ 					let levelPlan = LevelList[level]
+ 					if(levelPlan[1].dead){
  						GameOver(sim, handleSim, handleView)
  					}
 
