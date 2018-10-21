@@ -1,19 +1,41 @@
 <html>
 	<head>
+		<link rel="stylesheet" type="text/css" href="minireset.css">
 		<style type="text/css">
+			html, body{
+				height: 100%;
+			}
 			#canvas{
 				width: 100%;
 				height: 120%;
 				cursor: crosshair;
 			}
-			#titleScreen{
-				margin-left: 100;
+			#menus{
+				border: 1px solid black;
+				height: 100%;
+				background-size: cover;
+				background-repeat: no-repeat;
+				background-image: url('images/monitor.jpg');
 			}
-			.levelButton{
-				font-size: 500%;
+			.menu{
+				margin-left: 15%;
+				margin-top: 6%;
 			}
-			#title{
+			.mainTitle{
 				font-size: 500%;
+				font-family: "impact";
+			}
+			.menuTitle{
+				font-size: 500%;
+				font-family: "impact";
+			}
+			.menuText{
+				font-size: 150%;
+				font-family: "courier";
+			}
+			.menuButton{
+				font-size: 300%;
+				font-family: "impact";
 			}
 			#playButton{
 				width: 100px;
@@ -21,7 +43,6 @@
 			}
 		</style>
 		<title> Blower Game </title>
-		<link rel="stylesheet" type="text/css" href="minireset.css">
 		<script
   src="https://code.jquery.com/jquery-3.3.1.js"
   integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60="
@@ -35,15 +56,11 @@
 			let FPS = 60;
 			
 
-			let ruleSets = {
-				normal: {
-					blowerCount: 5,
-					bombDensity: (0.1),
-					blockDensity: 0.01,
-					speedMod: 3,
-					blowRange: 200,
-					blowForce: 100,
-				}
+			let ruleSet = {
+				speedMod: 3,
+				blowRange: 200,
+				blowForce: 100,
+				friction: 0.1
 			}
 
 			let canvasWidth;
@@ -55,11 +72,14 @@
 
  			let levelPlan;
 
-			Rules = Object.assign(Rules, ruleSets.normal)
+			Rules = Object.assign(Rules, ruleSet)
 
 
- 			function degToRad(deg){
-				return deg/180*Math.PI;
+			function degToRad(deg){
+				return (deg/180*Math.PI);
+			}
+			function radToDeg(rad){
+				return (rad/Math.PI*180)+180;
 			}
 			/*
 			function normalizeRads(rad){
@@ -100,12 +120,12 @@
  				constructor(board){
  					this.pieceList = [];
 					
-					this.addPiece = (x, y, type) => {
+					this.addPiece = (x, y, type, var1, var2, var3) => {
  						if(type == "blower"){
-							return this.pieceList.push(new Blower(board, x, y))
+							return this.pieceList.push(new Blower(this, board, x, y))
 						}
  						if(type == "payload"){
-							return this.pieceList.push(new Payload(board, x, y))
+							return this.pieceList.push(new Payload(this, board, x, y))
 						}
 						if(type == "destination"){
 							return this.pieceList.push(new Destination(board, x, y))
@@ -116,6 +136,18 @@
 						if(type == "block"){
 							return this.pieceList.push(new Block(board, x, y))
 						}
+						if(type == "destructible"){
+							return this.pieceList.push(new Destructible(board, x, y))
+						}
+						if(type == "turret"){
+							return this.pieceList.push(new Turret(this, board, x, y, var1, var2))
+						}
+						if(type == "bullet"){
+							return this.pieceList.push(new Bullet(board, x, y, var1, var2))
+						}
+						if(type == "text"){
+							return this.pieceList.push(new Text(board, x, y, var1))
+						}
 					}
 					this.nowPrior = null;
  					this.board = board;
@@ -123,7 +155,7 @@
  					for (let i = 0; i < levelPlan.length; i++) {
  						let object = levelPlan[i];
 					
-						this.addPiece(object.x, object.y, object.type)
+						this.addPiece(object.x, object.y, object.type, object.var1, object.var2, object.var3)
 					}
 
 					this.blower = this.pieceList[0];
@@ -161,6 +193,11 @@
  				}
  				tick(dt){
 					this.pieceList.forEach(piece => piece.tick(dt))
+					for (var i = 0; i < this.pieceList.length; i++){
+						if(this.pieceList[i].dead){
+							this.pieceList.splice(i, 1)
+						}
+					}
 				}
  				piecesBlown(dt){
 					if(this.pieceList[0].blowing){
@@ -173,7 +210,7 @@
 							let angle = calcAngle(blower.x, blower.y, piece.x, piece.y);
 							let blowArc = degToRad(45);
 							let dist = calcDist(blower.x, blower.y, piece.x, piece.y);
-							if(blower.pointingRad < angle+blowArc && blower.pointingRad > angle-blowArc && dist < Rules.blowRange){
+							if(blower.angle < angle+blowArc && blower.angle > angle-blowArc && dist < Rules.blowRange){
 								let velIncrease = (((Rules.blowRange-calcDist(blower.x, blower.y, piece.x, piece.y))*Rules.blowForce)/piece.mass)*dt;
 								piece.xVel -= velIncrease*((blower.x - piece.x)/dist)
 								piece.yVel -= velIncrease*((blower.y - piece.y)/dist)
@@ -187,13 +224,19 @@
  				piecesTouched(){
  					let nextLevel = false;
 					this.pieceList.forEach(piece => {
-						if(piece.dead){
+						if(piece.dead || !piece.collider){
 							return;
 						}
 						for(let i = 0; i < this.pieceList.length; i++){
 							let piece2 = this.pieceList[i];
+							if(piece2.dead || !piece2.collider){
+								continue;
+							}
+							if(piece == piece2){
+								continue;
+							}
 							if(calcDist(piece.x, piece.y, piece2.x, piece2.y) < (piece.hitBoxRadius+piece2.hitBoxRadius)){
-								if(piece.applyEffect(piece2.effect) == "next level"){
+								if(piece.onTouch(piece2.effect) == "next level"){
 									nextLevel = true;
 								}
 							}
@@ -204,6 +247,7 @@
 					}
 				}
 			}
+
 			class Piece{
 				constructor(board, x, y){
 					this.board = board;
@@ -215,19 +259,33 @@
 					this.mass = 1;
 					this.width;
 					this.height;
-					this.radius;
+					this.hitBoxRadius;
 					this.effect;
+					this.collider = true;
 				}
-				applyEffect(effect){
+				draw(context, camera){
+					let pieceSpec = {
+						x: this.x,
+						y: this.y,
+						width: this.width,
+						height: this.height,
+						xAnchor: 0.5,
+						yAnchor: 0.5
+					};
+					context.draw(pieceSpec, Img[this.type], camera)
+				}
+				onTouch(effect){
 					if(effect.type == "damage"){
 						this.health -= effect.amount;
 					}
 					if(effect.type == "win" && this.type == "destination"){
-						this.dead = true;
+						this.health = 0;
 						return "next level";
 					}
 				}
+				particleTick(){}
 				tick(dt){
+					this.particleTick(dt);
 					if(!this.dead){
 						if(this.control == "AI"){
 							//this.ai(pieceList);
@@ -235,39 +293,50 @@
 						this.x += this.xVel*dt;
 						this.y += this.yVel*dt;
 
-						this.xVel -= (this.xVel*0.01)*dt;
-						this.yVel -= (this.yVel*0.01)*dt;
+						this.xVel -= (this.xVel*Rules.friction)*dt;
+						this.yVel -= (this.yVel*Rules.friction)*dt;
 
 						if(this.x > this.board.size/2){
-							this.x -= this.board.size;
+							this.dead = true;
 						}
 						if(this.x < -this.board.size/2){
-							this.x += this.board.size;
+							this.dead = true;
 						}
 						if(this.y > this.board.size/2){
-							this.y -= this.board.size;
+							this.dead = true;
 						}
 						if(this.y < -this.board.size/2){
-							this.y += this.board.size;
+							this.dead = true;
 						}
 						if(this.health < 1){
 							this.dead = true;
+							if(this.type == "payload"){
+								MakeParticle(this.sim, "explosion", this.x, this.y, this.xVel/3, this.yVel/3, 0)	
+							}
 						}
 					}
 				}
 			}
 
 			class Payload extends Piece{
-				constructor(board, x, y){
+				constructor(sim, board, x, y){
 					super(board, x, y)
 					this.type = "payload";
 					this.mass = 25;
 					this.width = 40;
 					this.height = 40;
+					this.sim = sim;
 					this.hitBoxRadius = 20;
 					this.blowAble = true;
 					this.effect = {type: "win", amount: 10};
 					this.health = 10;
+				}
+				particleTick(dt){
+					for (var i = 0; i < dt*10; i++) {
+						if(Math.random()>0.95){
+							MakeParticle(this.sim, "electricity", this.x+((Math.random()-0.5)*20), this.y+((Math.random()-0.5)*10), 0, 0, 0)
+						}
+					}
 				}
 			}
 
@@ -281,6 +350,14 @@
 					this.blowAble = false;
 					this.effect = {type: "none"};
 				}
+				/*particleTick(dt){
+					let particleAngleMargin = degToRad(90)
+					let particleAngle = this.angle+((Math.random()-0.5)*particleAngleMargin)
+					let velocity = 750;
+					let xVel = velocity*Math.cos(particleAngle);
+					let yVel = velocity*Math.sin(particleAngle);
+					MakeParticle(this.sim, "force", this.x, this.y, xVel, yVel, radToDeg(particleAngle)+180)
+				}*/
 			}
 
  			class Bomb extends Piece{
@@ -292,7 +369,7 @@
 					this.height = 30;
 					this.hitBoxRadius = 15;
 					this.blowAble = true;
-					this.effect = {type: "damage", amount: 1};
+					this.effect = {type: "damage", amount: 10};
 				}
 			}
 
@@ -307,9 +384,98 @@
 					this.effect = {type: "damage", amount: 10};
 				}
 			}
+			class Destructible extends Piece{
+				constructor(board, x, y){
+					super(board, x, y)
+					this.type = "destructible";
+					this.width = 50;
+					this.height = 50;
+					this.hitBoxRadius = 25;
+					this.health = 1;
+					this.collider = true;
+					this.blowAble = false;
+					this.effect = {type: "damage", amount: 10};
+				}
+			}
+			class Turret extends Piece{
+				constructor(sim, board, x, y, fireDelay, bulletSpeed){
+					super(board, x, y)
+					this.type = "turret";
+					this.sim = sim;
+					this.width = 100;
+					this.height = 100;
+					this.hitBoxRadius = 50;
+					this.blowAble = false;
+					this.effect = {type: "damage", amount: 10};
+					this.fireDelay = fireDelay;
+					this.timeToNextFire = this.fireDelay;
+					this.bulletSpeed = bulletSpeed;
+					this.angle = 0;
+				}
+				tick(dt){
+					this.particleTick(dt);
+					if(this.control == "AI"){
+						//this.ai(pieceList);
+					}
+
+					if(this.timeToNextFire <= 0){
+						this.timeToNextFire = this.fireDelay;
+						let velocity = this.bulletSpeed;
+						let xVel = velocity*Math.cos(this.angle);
+						let yVel = velocity*Math.sin(this.angle);
+						this.sim.addPiece(this.x, this.y, "bullet", xVel, yVel)
+					}else{
+						this.timeToNextFire -= dt;
+					}
+				}
+				draw(context, camera){
+					let pieceSpec = {
+						x: this.x,
+						y: this.y,
+						width: this.width,
+						height: this.height,
+						xAnchor: 0.5,
+						yAnchor: 0.5
+					};
+					let target = this.sim.pieceList[2]
+					this.angle = calcAngle(this.x, this.y, target.x, target.y);
+					context.drawRotated(pieceSpec, Img.turret, camera, radToDeg(this.angle))
+				}
+			}
+			class Bullet extends Piece{
+				constructor(board, x, y, xVel, yVel){
+					super(board, x, y)
+					this.type = "bullet";
+					this.mass = 25;
+					this.width = 30;
+					this.height = 30;
+					this.xVel = xVel;
+					this.yVel = yVel;
+					this.hitBoxRadius = 15;
+					this.blowAble = true;
+					this.effect = {type: "damage", amount: 10};
+				}
+			}
+			class Text extends Piece{
+				constructor(board, x, y, text){
+					super(board, x, y)
+					this.type = "text";
+					this.hitBoxRadius = 0;
+					this.text = text;
+					this.blowAble = false;
+					this.effect = {type: "none"};
+				}
+				draw(context, camera){
+					let drawX = this.x-(camera.x-canvasWidth/2);
+					let drawY = this.y-(camera.y-canvasHeight/2);
+					context.font = "30px Arial";
+					context.fillStyle = 'white';
+					context.fillText(this.text, drawX, drawY);
+				}
+			}
 
  			class Blower extends Piece{
-				constructor(board, x, y, control){
+				constructor(sim, board, x, y, control){
 					super(board, x, y)
 					this.type = "blower";
 					this.width = 50;
@@ -317,21 +483,32 @@
 					this.hitBoxRadius = 25;
 					this.blowAble = false;
 					this.effect = {type: "none"};
+					this.collider = false;
 
+					this.sim = sim;
 					this.board = board;
 					this.control = control;
-					this.pointingRad = (Math.random()*Math.PI*2)-Math.PI;
+					this.angle = (Math.random()*Math.PI*2)-Math.PI;
 					this.speed = 500;
-					this.air = 100;
+				}
+				draw(context, camera){
+					let pieceSpec = {
+						x: this.x,
+						y: this.y,
+						width: this.width,
+						height: this.height,
+						xAnchor: 0.5,
+						yAnchor: 0.5
+					};
+					let angle = (this.angle/Math.PI)*180
+					context.drawRotated(pieceSpec, Img.blower, camera, angle)
 				}
 				moveTick(dt){
 					if(wDown){
 						this.y -= this.speed*dt;
-						console.assert( !isNaN(this.y) );
 					}
 					if(sDown){
 						this.y += this.speed*dt;
-						console.assert( !isNaN(this.y) );
 					}
 					if(aDown){
 						this.x -= this.speed*dt;
@@ -340,15 +517,17 @@
 						this.x += this.speed*dt;
 					}
 				}
-				airTick(dt){
-					if(!this.blowing && this.air < 100){
-						this.air += dt;
-					}
+				particleTick(dt){
+					MakeParticle(this.sim, "trail", this.x+((Math.random()-0.5)*20), this.y+((Math.random()-0.5)*10), 0, 0, 0)
 					if(this.blowing){
-						this.air -= 2*dt;
-					}
-					if(this.air <= 0){
-						this.blowing = false;
+						for (var i = 0; i < 100*dt; i++) {
+							let particleAngleMargin = degToRad(90)
+							let particleAngle = this.angle+((Math.random()-0.5)*particleAngleMargin)
+							let velocity = 750;
+							let xVel = velocity*Math.cos(particleAngle);
+							let yVel = velocity*Math.sin(particleAngle);
+							MakeParticle(this.sim, "force", this.x, this.y, xVel, yVel, radToDeg(particleAngle)+180)
+						}
 					}
 				}
 				ai(pieceList){
@@ -363,7 +542,7 @@
 						//this.ai(pieceList);
 					}
 					this.moveTick(dt);
-					this.airTick(dt)
+					this.particleTick(dt)
 					if(this.health <= 0 ){
 						this.dead = true;
 					}
@@ -378,7 +557,141 @@
 					this.strength += amount*Rules.strengthAddMod;
 				}
 				setTarget(x, y){
-					this.pointingRad = calcAngle(this.x, this.y, x, y);
+					this.angle = calcAngle(this.x, this.y, x, y);
+				}
+			}
+
+			class Particle extends Piece{
+				constructor(board, x, y, xVel, yVel, angle){
+					super(board, x, y)
+					this.width = 5;
+					this.height = 5;
+					this.xVel = xVel;
+					this.yVel = yVel;
+					this.blowAble = false;
+					this.collider = false;
+					this.lifeRemaining = Rules.blowRange/(xVel+yVel);
+					this.angle = angle;
+				}
+				draw(context, camera){
+					let pieceSpec = {
+						x: this.x,
+						y: this.y,
+						width: this.width,
+						height: this.height,
+						xAnchor: 0.5,
+						yAnchor: 0.5
+					};
+					if(this.angle == 0){
+						context.draw(pieceSpec, Img[this.type], camera)
+					}else{
+						context.drawRotated(pieceSpec, Img[this.type], camera, this.angle)
+					}
+				}
+				tick(dt){
+					if(!this.dead){
+						if(this.control == "AI"){
+							//this.ai(pieceList);
+						}
+						this.x += this.xVel*dt;
+						this.y += this.yVel*dt;
+
+						this.xVel -= (this.xVel*Rules.friction)*dt;
+						this.yVel -= (this.yVel*Rules.friction)*dt;
+
+						this.lifeRemaining -= dt;
+						if(this.lifeRemaining <= 0){
+							this.dead = true;
+						}
+					}
+				}
+			}
+			class Force extends Particle{
+				constructor(board, x, y, xVel, yVel, angle){
+					super(board, x, y, xVel, yVel, angle)
+					this.width = 10;
+					this.height = 10;
+					this.type = "force";
+					this.lifeRemaining = (Math.random()+0.5)*0.2;
+				}
+			}
+			class Trail extends Particle{
+				constructor(board, x, y, xVel, yVel){
+					super(board, x, y, xVel, yVel)
+					this.width = 5;
+					this.height = 5;
+					this.angle = Math.random()*360;
+					this.type = "trail";
+					this.lifeRemaining = (Math.random()+0.5)*0.2;
+				}
+			}
+			class Electricity extends Particle{
+				constructor(board, x, y, xVel, yVel){
+					super(board, x, y, xVel, yVel)
+					this.width = 20;
+					this.height = 20;
+					this.angle = Math.random()*360;
+					this.type = "electricity";
+					this.lifeRemaining = Math.random()*0.2;
+				}
+			}
+			class PortalEnergy extends Particle{
+				constructor(board, x, y, xVel, yVel){
+					super(board, x, y, xVel, yVel)
+					this.width = 20;
+					this.height = 20;
+					this.angle = Math.random()*360;
+					this.type = "portalEnergy";
+					this.lifeRemaining = 0.5;
+				}
+			}
+			class Explosion extends Particle{
+				constructor(board, x, y, xVel, yVel){
+					super(board, x, y, xVel, yVel)
+					this.width = 200;
+					this.height = 200;
+					this.angle = 0;
+					this.type = "explosion";
+					this.totalLife = 0.52;
+					this.lifeRemaining = this.totalLife;
+				}
+				draw(context, camera){
+					let frameCount = 13;
+					let frame = Math.floor(((this.totalLife-this.lifeRemaining)/this.totalLife)*frameCount) //12 frames in the explosion image.
+					let frameWidth = 2548/frameCount;
+					let frameHeight = 190;
+
+					let pieceSpec = {
+						sx: frame*frameWidth,
+						sy: 0,
+						sw: frameWidth,
+						sh: frameHeight,
+						x: this.x,
+						y: this.y,
+						width: this.width,
+						height: this.height,
+						xAnchor: 0.5,
+						yAnchor: 0.5
+					};
+
+					context.draw(pieceSpec, Img[this.type], camera)
+				}
+			}
+			function MakeParticle(sim, type, x, y, xVel, yVel, angle){
+				if(type == "force"){
+					sim.pieceList.push(new Force(sim.board, x, y, xVel, yVel, angle))
+				}
+				if(type == "trail"){
+					sim.pieceList.push(new Trail(sim.board, x, y, xVel, yVel))
+				}
+				if(type == "electricity"){
+					sim.pieceList.push(new Electricity(sim.board, x, y, xVel, yVel))
+				}
+				if(type == "portalEnergy"){
+					sim.pieceList.push(new PortalEnergy(sim.board, x, y, xVel, yVel))
+				}
+				if(type == "explosion"){
+					sim.pieceList.push(new Explosion(sim.board, x, y, xVel, yVel))
 				}
 			}
  			//CONTROL
@@ -433,6 +746,12 @@
 						if(event.key == "5"){
 							EditLevel(sim, levelPlan, "bomb", mouseX, mouseY)
 						}
+						if(event.key == "6"){
+							EditLevel(sim, levelPlan, "destructible", mouseX, mouseY)
+						}
+						if(event.key == "7"){
+							EditLevel(sim, levelPlan, "turret", mouseX, mouseY)
+						}
 					}
 				});
 				$( document ).keyup(function( event ) {
@@ -459,8 +778,16 @@
 				destination: 'images/gate.png',
 				bomb: 'images/mine.png',
 				block: 'images/block.png',
+				destructible: 'images/destructible.png',
+				turret: 'images/turret.png',
+				bullet: 'images/bullet.png',
 				//wind: 'images/wind2.png',
 				background: 'images/black.png',
+				force: 'images/particles/force.png',
+				trail: 'images/particles/trail.png',
+				electricity: 'images/particles/lightning.png',
+				portalEnergy: 'images/particles/trail.png',
+				explosion: 'images/explosion.png',
 				//minimapBackground: 'images/minimapBackground.jpg',
 			};
  			let Img = {};
@@ -484,13 +811,15 @@
 						if( imagesLoaded >= imagesRequested ) {
 							console.assert(imagesLoaded == imagesRequested)
 							clearInterval(handle);
-							displayLevelSelect();
+							displayTitleScreen();
 						}
 					},1)
 				}
  				myCanvas(canvasId, board){
 					var canvas = document.getElementById(canvasId);
 					var context = canvas.getContext('2d');
+					context.canvas.width = window.innerWidth;
+					context.canvas.height = window.innerHeight;
 					
 					context.draw = function(spec, imageObj, camera){
 						let drawX = spec.x-(camera.x-canvasWidth/2);
@@ -499,14 +828,18 @@
 							drawX -= spec.width*spec.xAnchor;
 							drawY -= spec.height*spec.yAnchor;
 						}
-						this.drawImage(imageObj, drawX, drawY, spec.width, spec.height);
+						if(spec.sx !== undefined){
+							this.drawImage(imageObj, spec.sx, spec.sy, spec.sw, spec.sh, drawX, drawY, spec.width, spec.height);
+						}else{
+							this.drawImage(imageObj, drawX, drawY, spec.width, spec.height);
+						}
 					}.bind(context)
- 					context.clear = function(spec, imageObj){
+					context.clear = function(spec, imageObj){
 						this.drawImage(Img.background, 0, 0, canvas.width, canvas.height);
 					}.bind(context)
-					context.clearMinimap = function(spec, imageObj){
+					/*context.clearMinimap = function(spec, imageObj){
 						this.drawImage(Img.background, 0, 0, 280, 260);
-					}.bind(context)
+					}.bind(context)*/
 					context.drawRotated = function(spec, imageObj, camera, degrees){
 						let x = spec.x-(camera.x-canvasWidth/2);
 						let y = spec.y-(camera.y-canvasHeight/2);
@@ -531,26 +864,13 @@
  					camera.x = sim.blower.x;
 					camera.y = sim.blower.y;
  					for(let i = 0; i < sim.pieceList.length; i++){
-						let pieceSpec = {
-							x: sim.pieceList[i].x,
-							y: sim.pieceList[i].y,
-							width: sim.pieceList[i].width,
-							height: sim.pieceList[i].height,
-							xAnchor: 0.5,
-							yAnchor: 0.5
-						};
 						
 						if(!sim.pieceList[i].dead){
-							if(sim.pieceList[i].type == "blower"){
-								let angle = (sim.pieceList[i].pointingRad/Math.PI)*180
-								context.drawRotated(pieceSpec, Img[sim.pieceList[i].type], camera, angle)
-							}else{
-								context.draw(pieceSpec, Img[sim.pieceList[i].type], camera)
-							}
+							sim.pieceList[i].draw(context, camera)
 						}
 					}
 				}
-				renderMinimap(context, sim){
+/*				renderMinimap(context, sim){
 					context.clearMinimap()
 					
 					let camera = {};
@@ -586,44 +906,67 @@
 					}
 					context.drawImage(Img.blower, drawX, drawY, blowerSpec.width, blowerSpec.height);
 					
-				}
+				}*/
 			}
  			//ORGANIZATION
- 			function displayLevelSelect(){
- 				$("#canvas").hide()
- 				$("#titleScreen").show()
- 				$("#levelSelect").html('');
- 				for (let i = 1; i < LevelList.length; i++) {
- 					$("#levelSelect").append('<button class="levelButton" onClick="level = '+i+'; levelPlan = LevelList[level]; Main()">'+i+'</button>');
- 				}
- 				$("#levelSelect").append('<br></br> <button class="levelButton" onClick="level = 0; levelPlan = LevelList[0]; Main()">Level Builder</button>');
- 			}
-
- 			function GameOver(sim, handleSim, handleView){
+			function displayTitleScreen(){
+				$("#canvas").hide()
+				$("#debrief").hide()
+				$("#gameOverScreen").hide()
+				$("#levelSelect").hide()
+				$("#titleScreen").show()
+			}
+			function displayLevelSelect(){
+				$("#gameOverScreen").hide()
+				$("#titleScreen").hide()
+				$("#levelSelect").show()
+				$("#levelSelect").html('');
+				for (let i = 1; i < LevelList.length; i++) {
+					$("#levelSelect").append('<button class="menuButton" onClick="level = '+i+'; levelPlan = LevelList[level]; Main()">'+i+'</button>');
+				}
+				$("#levelSelect").prepend('<h1 class="menuTitle">Choose A Level</h1>')
+				$("#levelSelect").append('<br> </br> <button class="menuButton" onClick="level = 0; levelPlan = LevelList[0]; Main()">Level Builder</button> <br> </br> <button class="menuButton" onClick="displayTitleScreen()">Back</button>');
+			}
+			function displayGameOverScreen(win){
+				$("#canvas").hide()
+				$("#levelSelect").hide()
+				$("#menus").show()
+				$("#gameOverScreen").show()
+				if(win){
+					$("#gameOverScreen").html('<h1 class="menuTitle">You Win!</h1> <button class="menuButton" onClick="displayLevelSelect()">Main Menu</button> <button class="menuButton" onClick="level = '+level+'; levelPlan = LevelList[level]; Main()">Play Again</button> <button class="menuButton" onClick="level = '+(level+1)+'; levelPlan = LevelList[level]; Main()">Next Level</button>');
+				}else{
+					$("#gameOverScreen").html('<h1 class="menuTitle">You Lose!</h1> <button class="menuButton" onClick="displayLevelSelect()">Main Menu</button> <button class="menuButton" onClick="level = '+level+'; levelPlan = LevelList[level]; Main()">Try Again</button>');
+				}
+			}
+			function displayDebrief(){
+				$("#titleScreen").hide()
+				$("#debrief").show()
+			}
+ 			function GameOver(handleView, win){
  				cancelAnimationFrame(handleView)
- 				displayLevelSelect()
+ 				displayGameOverScreen(win)
 			}
 
  			function Main(){
  				//level = prompt("Which level would you like to play?");
 				wDown = false;
-	 			sDown = false;
+				sDown = false;
 				aDown = false;
 				dDown = false;
- 
 
- 				$("#playAgain").hide()
+				$("#menus").hide()
 				$("#canvas").show()
 				let view = new View();
- 				let board = new Board(Rules.boardSize);
- 				let context = view.myCanvas('myCanvas', board);
- 				let sim = new Sim(board);
- 				initControls(sim);
- 				function tickSim(){
- 					let levelPlan = LevelList[level]
- 					if(levelPlan[2].dead){
- 						GameOver(sim, handleSim, handleView)
- 					}
+				let board = new Board(Rules.boardSize);
+				let context = view.myCanvas('canvas', board);
+				let sim = new Sim(board);
+				initControls(sim);
+					let levelPlan = LevelList[level]
+				function tickSim(){
+					let levelPlan = LevelList[level]
+					if(sim.pieceList[2].type != "payload"){
+						 setTimeout(() => {setTimeout(GameOver(handleView, false))},1000)
+					}
 
 					sim.timeSinceLastSim = 0;
 					let dt;
@@ -646,27 +989,22 @@
 				}
  				function tickView(){
 					view.render(context, sim);
-					view.renderMinimap(context, sim);
+					//view.renderMinimap(context, sim);
 				}
 
 				$("#titleScreen").hide()
-
-				let tickBoth = function() {
-					//tickView();
-				}
 
 				let handleView;
 				function animateView(){
 					tickView()
 					handleView = requestAnimationFrame( animateView );
 					if(tickSim() == "next level"){
-						GameOver()
+						GameOver(handleView, true)
 					}
 				}
  				animateView();
 			}
-
- 			$( document ).ready(function(){	
+			$(document).ready(function(){	
  				$("#titleScreen").hide() //temporary for dev
  				
  				canvasWidth = $("#canvas").width();
@@ -676,6 +1014,16 @@
 
 				let view = new View();
 				view.imageLoad(ImageURLs, Img, Main);
+				
+				$(window).resize(function(){
+					let canvasId = "canvas"
+					let canvas = document.getElementById(canvasId);
+					let context = canvas.getContext('2d');
+					context.canvas.width = window.innerWidth;
+					context.canvas.height = window.innerHeight;
+	 				canvasWidth = $("#canvas").width();
+					canvasHeight = $("#canvas").height();
+				})
 			});
 			
 			//art by: eleksey goldis
@@ -685,18 +1033,52 @@
 		</script>
 	</head>
 	<body>
-		<div id="titleScreen">
-			<h1 id="title">
-				Blower Game
-			</h1>
-			<div id="levelSelect">
+		<div id="menus">
+			<div id="titleScreen" class="menu">
+				<h1 class="menuTitle">
+					Blower Game
+				</h1>
+				<button class="menuButton" onClick="displayDebrief()">
+					Debriefing
+				</button>
+				<button class="menuButton" onClick="level = 1; levelPlan = LevelList[level]; Main()">
+					Play
+				</button>
+				<button class="menuButton" onClick="displayLevelSelect()">
+					Level Select
+				</button>
 			</div>
-			<pre id="leaderBoard">
+			<div id="debrief" class="menu">
+				<h1 class="menuTitle">
+					Your Debrief
+				</h1>
+				<pre class="menuText">
+	The enemy has stolen the Quanum Arc-Reactor and placed it deep behind enemy lines.
+	You must get it back to high command.
 
-			</pre>
+	We can get you to the Arc-Reactor, but you will have to get out.
+	Just push it through the blue warp gates and they will lead you back to high command.
+
+	However, they have experimented with it and it is unstable.
+	If it touches anything, it will go critical and destroy one third of the galaxy.
+	This is why you must get it back to us with only your repulser field.
+
+	Good Luck.
+				</pre>
+				<button class="menuButton" onClick="displayTitleScreen()">
+					Understood
+				</button>
+			</div>
+			<div id="levelSelect" class="menu">
+				<h1 class="menuTitle">
+					Choose A Level
+				</h1>
+			</div>
+			<div id="gameOverScreen" class="menu">
+			</div>
 		</div>
-		<div id="canvas">
-			<canvas id="myCanvas" width="1000" height="790"></canvas>
+		<div id="canvasDiv" width="100%" height="100%">
+			<canvas id="canvas" width="100%" height="100%"></canvas>
 		</div>
 	</body>
 </html>
