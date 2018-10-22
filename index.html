@@ -26,6 +26,22 @@
 				font-size: 500%;
 				font-family: "impact";
 			}
+			#pauseMenuOuter{
+				display: none;
+				background-color: rgba(0, 0, 0, 0.75);
+				z-index: 10;
+				position: absolute;
+				width: 100%;
+				height: 100%;
+				align-items: center;
+			}
+			#pauseMenu{
+				background-color: rgba(255, 255, 255, 0.25);
+				z-index: 11;
+				margin-left: auto;
+				margin-right: auto;
+				width: 800;
+			}
 			.menuTitle{
 				font-size: 500%;
 				font-family: "impact";
@@ -40,11 +56,11 @@
 				width: 75%;
 			}
 			.menuButton{
-				font-size: 300%;
+				font-size: 200%;
 				font-family: "impact";
 			}
 			.bigMenuButton{
-				font-size: 400%;
+				font-size: 300%;
 				font-family: "impact";
 			}
 			#playButton{
@@ -75,7 +91,7 @@
 				friction: 1,
 				minSpeed: 1,
 				playerSpeed: 500,
-				gameSpeed: 0.5,
+				gameSpeed: 0,
 				zOrders: {particle: 0, blower: 1, payload: 2, bullet: 3, mine: 4, destructible: 5, turret: 6, barricade: 7, gate: 8, text: 9}
 			}
 
@@ -687,7 +703,7 @@
 
 						this.applyVelocity(dt)
 
-						this.lifeRemaining -= dt;
+						this.lifeRemaining -= dt*Rules.gameSpeed;
 						if(this.lifeRemaining <= 0){
 							this.dead = true;
 						}
@@ -786,18 +802,18 @@
 				let blower = sim.pieceList[0];
 				let mouseX = 0;
 				let mouseY = 0;
-				$( document ).mousemove(function( event ) {
+				$( document ).on("mousemove.controls", null, function( event ) {
 					mouseX = event.pageX+blower.x-canvasWidth/2;
 					mouseY = event.pageY+blower.y-canvasHeight/2;
 					blower.setTarget(mouseX, mouseY)
 				});
-				$( document ).mousedown(function( event ) {
+				$( document ).on("mousedown.controls", null,function( event ) {
 					blower.blowing = true;
 				});
-				$( document ).mouseup(function( event ) {
+				$( document ).on("mouseup.controls", null, function( event ) {
 					blower.blowing = false;
 				});
-				$( document ).keydown(function( event ) {
+				$( document ).on("keydown.controls", null, function( event ) {
 					if(event.key == "w" || event.key == "W"){
 						wDown = true;
 					}
@@ -809,6 +825,15 @@
 					}
 					if(event.key == "d" || event.key == "D"){
 						dDown = true;
+					}
+					if(event.key == "Escape"){
+						if(Rules.gameSpeed){
+							PauseGame()
+							console.log("pause")
+						}else{
+							UnpauseGame()
+							console.log("unpause")
+						}
 					}
 					if(level == 0){
 						if(event.key == "0"){
@@ -837,7 +862,7 @@
 						}
 					}
 				});
-				$( document ).keyup(function( event ) {
+				$( document ).on("keyup.controls", null, function( event ) {
 					if(event.key == "w" || event.key == "W"){
 						wDown = false;
 					}
@@ -1027,11 +1052,22 @@
 				$("#brief").show()
 			}
  			function GameOver(handleView, win){
+ 				$(document).off(".controls")
  				cancelAnimationFrame(handleView)
  				displayGameOverScreen(win)
 			}
+			function PauseGame(){
+				Rules.gameSpeed = 0;
+				$(".restartLevel").click()
+				$("#pauseMenuOuter").show()
+			}
+			function UnpauseGame(){
+				Rules.gameSpeed = 0.5;
+				$("#pauseMenuOuter").hide()
+			}
 
  			function Main(){
+ 				UnpauseGame()
  				//level = prompt("Which level would you like to play?");
 				wDown = false;
 				sDown = false;
@@ -1045,7 +1081,8 @@
 				let context = view.myCanvas('canvas', board);
 				let sim = new Sim(board);
 				initControls(sim);
-					let levelPlan = LevelList[level]
+				let levelPlan = LevelList[level]
+				
 				function tickSim(){
 					let levelPlan = LevelList[level]
 					if(!sim.payload){
@@ -1088,7 +1125,7 @@
 				}
  				animateView();
 			}
-			$(document).ready(function(){	
+			$(document).ready(function(){
  				$("#titleScreen").hide() //temporary for dev
  				
  				canvasWidth = $("#canvas").width();
@@ -1168,6 +1205,22 @@
 			</div>
 		</div>
 		<div id="canvasDiv" width="100%" height="100%">
+			<div id="pauseMenuOuter">
+				<div id="pauseMenu">
+					<h1 class="menuTitle">
+						Game Paused
+					</h1>
+					<button class="menuButton" onclick="UnpauseGame()">
+						Resume Game
+					</button>
+					<button class="menuButton" onclick="GameOver(); levelPlan = LevelList[level]; Main()">
+						Restart Level
+					</button>
+					<button class="menuButton" onclick="GameOver(false)">
+						Main Menu
+					</button>
+				</div>
+			</div>
 			<canvas id="canvas" width="100%" height="100%"></canvas>
 		</div>
 	</body>
