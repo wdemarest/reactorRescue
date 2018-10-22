@@ -231,13 +231,13 @@ function MakeLevelList(){
 			{type: "text", x: -250, y: 0, var1: "Gate is below."},
 		],
 		[//Fast Turret
-			{type: "blower", x: 0, y: -100},
+			{type: "blower", x: 0, y: -300},
 			{type: "destination", x: 0, y: 200},
-			{type: "payload", x: 0, y: -200},
+			{type: "payload", x: 0, y: -400},
 
-			{type: "turret", x: 0, y: 0, var1: 0.5, var2: 300},
+			{type: "turret", x: 0, y: 0, var1: 0.5, var2: 200},
 
-			{type: "text", x: -400, y: -150, var1: "Some turrets fire faster bullets or more frequently than others"},
+			{type: "text", x: -400, y: -350, var1: "Some turrets fire faster bullets or more frequently than others"},
 		],
 		[//Into the Box
 			{type: "blower", x: 0, y: 100},
@@ -501,6 +501,23 @@ function MakeLevelList(){
 
 			{type: "text", x: -200, y: -950, var1: "The gate is way below you."},
 			{type: "text", x: -225, y: -850, var1: "There's a turret down there BTW."},
+		],
+		[//Escort
+			{type: "blower", x: 0, y: -1000},
+			{type: "destination", x: 0, y: 750},
+			{type: "payload", x: 0, y: -900},
+
+			{type: "turret", x: 500, y: -800, var1: 0.5, var2: 400},
+			{type: "turret", x: -500, y: -800, var1: 0.5, var2: 400},
+			{type: "turret", x: 500, y: 0, var1: 0.5, var2: 400},
+			{type: "turret", x: -500, y: 0, var1: 0.5, var2: 400},
+			{type: "turret", x: 500, y: 900, var1: 0.5, var2: 400},
+			{type: "turret", x: -500, y: 900, var1: 0.5, var2: 400},
+
+			{type: "block", x: 0, y: -500},
+
+			{type: "text", x: -200, y: -950, var1: "The gate is way below you."},
+			{type: "text", x: -225, y: -850, var1: "There are turrets too."},
 		],
 	]
 	return LevelList;

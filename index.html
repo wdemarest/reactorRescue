@@ -4,10 +4,11 @@
 		<style type="text/css">
 			html, body{
 				height: 100%;
+				overflow: hidden;
 			}
 			#canvas{
 				width: 100%;
-				height: 120%;
+				height: 100%;
 				cursor: crosshair;
 			}
 			#menus{
@@ -60,7 +61,9 @@
 				speedMod: 3,
 				blowRange: 200,
 				blowForce: 100,
-				friction: 0.1
+				friction: 0.1,
+				playerSpeed: 500,
+				gameSpeed: 0.5
 			}
 
 			let canvasWidth;
@@ -290,11 +293,11 @@
 						if(this.control == "AI"){
 							//this.ai(pieceList);
 						}
-						this.x += this.xVel*dt;
-						this.y += this.yVel*dt;
+						this.x += this.xVel*dt*Rules.gameSpeed;
+						this.y += this.yVel*dt*Rules.gameSpeed;
 
-						this.xVel -= (this.xVel*Rules.friction)*dt;
-						this.yVel -= (this.yVel*Rules.friction)*dt;
+						this.xVel -= (this.xVel*Rules.friction)*dt*Rules.gameSpeed;
+						this.yVel -= (this.yVel*Rules.friction)*dt*Rules.gameSpeed;
 
 						if(this.x > this.board.size/2){
 							this.dead = true;
@@ -425,7 +428,7 @@
 						let yVel = velocity*Math.sin(this.angle);
 						this.sim.addPiece(this.x, this.y, "bullet", xVel, yVel)
 					}else{
-						this.timeToNextFire -= dt;
+						this.timeToNextFire -= dt*Rules.gameSpeed;
 					}
 				}
 				draw(context, camera){
@@ -489,7 +492,7 @@
 					this.board = board;
 					this.control = control;
 					this.angle = (Math.random()*Math.PI*2)-Math.PI;
-					this.speed = 500;
+					this.speed = Rules.playerSpeed;
 				}
 				draw(context, camera){
 					let pieceSpec = {
@@ -505,22 +508,22 @@
 				}
 				moveTick(dt){
 					if(wDown){
-						this.y -= this.speed*dt;
+						this.y -= this.speed*dt*Rules.gameSpeed;
 					}
 					if(sDown){
-						this.y += this.speed*dt;
+						this.y += this.speed*dt*Rules.gameSpeed;
 					}
 					if(aDown){
-						this.x -= this.speed*dt;
+						this.x -= this.speed*dt*Rules.gameSpeed;
 					}
 					if(dDown){
-						this.x += this.speed*dt;
+						this.x += this.speed*dt*Rules.gameSpeed;
 					}
 				}
 				particleTick(dt){
 					MakeParticle(this.sim, "trail", this.x+((Math.random()-0.5)*20), this.y+((Math.random()-0.5)*10), 0, 0, 0)
 					if(this.blowing){
-						for (var i = 0; i < 100*dt; i++) {
+						for (var i = 0; i < 100*dt*Rules.gameSpeed; i++) {
 							let particleAngleMargin = degToRad(90)
 							let particleAngle = this.angle+((Math.random()-0.5)*particleAngleMargin)
 							let velocity = 750;
@@ -593,11 +596,11 @@
 						if(this.control == "AI"){
 							//this.ai(pieceList);
 						}
-						this.x += this.xVel*dt;
-						this.y += this.yVel*dt;
+						this.x += this.xVel*dt*Rules.gameSpeed;
+						this.y += this.yVel*dt*Rules.gameSpeed;
 
-						this.xVel -= (this.xVel*Rules.friction)*dt;
-						this.yVel -= (this.yVel*Rules.friction)*dt;
+						this.xVel -= (this.xVel*Rules.friction)*dt*Rules.gameSpeed;
+						this.yVel -= (this.yVel*Rules.friction)*dt*Rules.gameSpeed;
 
 						this.lifeRemaining -= dt;
 						if(this.lifeRemaining <= 0){
