@@ -33,9 +33,18 @@
 			.menuText{
 				font-size: 150%;
 				font-family: "courier";
+				margin-right: 
+			}
+			.menuText p{
+				padding-bottom: 20px;
+				width: 75%;
 			}
 			.menuButton{
 				font-size: 300%;
+				font-family: "impact";
+			}
+			.bigMenuButton{
+				font-size: 400%;
 				font-family: "impact";
 			}
 			#playButton{
@@ -45,10 +54,12 @@
 		</style>
 		<title> Blower Game </title>
 		<script
-  src="https://code.jquery.com/jquery-3.3.1.js"
-  integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60="
-  crossorigin="anonymous"></script>
-  <script src="levels.js" charset="utf-8"></script>
+			src="https://code.jquery.com/jquery-3.3.1.js"
+			integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60="
+			crossorigin="anonymous">
+		</script>
+		<script src="levels.js" charset="utf-8"></script>
+		<script src="debug.js" charset="utf-8"></script>
 		<script>
 			/*
 				
@@ -61,9 +72,11 @@
 				speedMod: 3,
 				blowRange: 200,
 				blowForce: 100,
-				friction: 0.1,
+				friction: 1,
+				minSpeed: 1,
 				playerSpeed: 500,
-				gameSpeed: 0.5
+				gameSpeed: 0.5,
+				zOrders: {particle: 0, blower: 1, payload: 2, bullet: 3, mine: 4, destructible: 5, turret: 6, barricade: 7, gate: 8, text: 9}
 			}
 
 			let canvasWidth;
@@ -74,6 +87,8 @@
  			let level;
 
  			let levelPlan;
+
+ 			let debug = new Debug;
 
 			Rules = Object.assign(Rules, ruleSet)
 
@@ -111,6 +126,22 @@
 				let rad = Math.atan2(dy,dx)
 				return rad;
 			}
+			function isWithinArc(sourceRad, targetRad, arc){
+				let a0 = sourceRad;
+				let a1 = sourceRad - Math.PI*2;
+				let a2 = sourceRad + Math.PI*2;
+				let min = targetRad - arc;
+				let max = targetRad + arc;
+
+				if(
+					(a0 >= min && a0 <= max) ||
+					(a1 >= min && a1 <= max) ||
+					(a2 >= min && a2 <= max)
+				){
+					return true;
+				}
+				return false;
+			}
 			class Board{
 				constructor(size){
 					this.size = size;
@@ -122,35 +153,38 @@
  			class Sim{
  				constructor(board){
  					this.pieceList = [];
+
+ 					let newPiece;
 					
-					this.addPiece = (x, y, type, var1, var2, var3) => {
+					this.addPiece = (x, y, type, object) => {
  						if(type == "blower"){
-							return this.pieceList.push(new Blower(this, board, x, y))
+							newPiece = (new Blower(this, board, x, y))
 						}
  						if(type == "payload"){
-							return this.pieceList.push(new Payload(this, board, x, y))
+							newPiece = (new Payload(this, board, x, y))
 						}
-						if(type == "destination"){
-							return this.pieceList.push(new Destination(board, x, y))
+						if(type == "gate"){
+							newPiece = (new gate(board, x, y))
 						}
-						if(type == "bomb"){
-							return this.pieceList.push(new Bomb(board, x, y))
+						if(type == "mine"){
+							newPiece = (new Mine(board, x, y))
 						}
-						if(type == "block"){
-							return this.pieceList.push(new Block(board, x, y))
+						if(type == "barricade"){
+							newPiece = (new Barricade(board, x, y))
 						}
 						if(type == "destructible"){
-							return this.pieceList.push(new Destructible(board, x, y))
+							newPiece = (new Destructible(board, x, y))
 						}
 						if(type == "turret"){
-							return this.pieceList.push(new Turret(this, board, x, y, var1, var2))
+							newPiece = (new Turret(this, board, x, y, object.fireDelay, object.bulletSpeed))
 						}
 						if(type == "bullet"){
-							return this.pieceList.push(new Bullet(board, x, y, var1, var2))
+							newPiece = (new Bullet(board, x, y, object.xVel, object.yVel))
 						}
 						if(type == "text"){
-							return this.pieceList.push(new Text(board, x, y, var1))
+							newPiece = (new Text(board, x, y, object.text))
 						}
+						this.pieceList.push(newPiece)
 					}
 					this.nowPrior = null;
  					this.board = board;
@@ -158,11 +192,8 @@
  					for (let i = 0; i < levelPlan.length; i++) {
  						let object = levelPlan[i];
 					
-						this.addPiece(object.x, object.y, object.type, object.var1, object.var2, object.var3)
+						this.addPiece(object.x, object.y, object.type, object)
 					}
-
-					this.blower = this.pieceList[0];
-
  					/*
  					for (let i = 0; i < Rules.blowerCount; i++) {
 						let x = board.pickRandomLocation();
@@ -180,19 +211,31 @@
 					for (let i = 0; i < (1); i++) {
 						let x = board.pickRandomLocation();
 						let y = board.pickRandomLocation();
-						this.addPiece(x, y, "destination")
+						this.addPiece(x, y, "gate")
 					}
-					for (let i = 0; i < (Rules.bombDensity*(board.size^2)); i++) {
+					for (let i = 0; i < (Rules.mineDensity*(board.size^2)); i++) {
 						let x = board.pickRandomLocation();
 						let y = board.pickRandomLocation();
-						this.addPiece(x, y, "bomb")
+						this.addPiece(x, y, "mine")
 					}
-					for (let i = 0; i < (Rules.blockDensity*(board.size^2)); i++) {
+					for (let i = 0; i < (Rules.barricadeDensity*(board.size^2)); i++) {
 						let x = board.pickRandomLocation();
 						let y = board.pickRandomLocation();
-						this.addPiece(x, y, "block")
+						this.addPiece(x, y, "barricade")
 					}
 					*/
+ 				}
+ 				find(type){
+ 					return this.pieceList.find((piece)=>piece.type == type);
+ 				}
+ 				exists(type){
+ 					return !!this.find(type);
+ 				}
+ 				get blower(){
+ 					return this.find("blower");
+ 				}
+ 				get payload(){
+ 					return this.find("payload");
  				}
  				tick(dt){
 					this.pieceList.forEach(piece => piece.tick(dt))
@@ -203,25 +246,25 @@
 					}
 				}
  				piecesBlown(dt){
-					if(this.pieceList[0].blowing){
-						let blower = this.pieceList[0];
+ 					let blower = this.blower;
+ 					if(!blower){return}
+					if(blower.blowing){
 						for(let i = 0; i < this.pieceList.length; i++){
 							let piece = this.pieceList[i];
-							if(!piece.blowAble){
+							if(!piece.blowable){
 								continue;
 							}
 							let angle = calcAngle(blower.x, blower.y, piece.x, piece.y);
 							let blowArc = degToRad(45);
 							let dist = calcDist(blower.x, blower.y, piece.x, piece.y);
-							if(blower.angle < angle+blowArc && blower.angle > angle-blowArc && dist < Rules.blowRange){
+							if(isWithinArc(blower.angle, angle, blowArc) && dist < Rules.blowRange){
 								let velIncrease = (((Rules.blowRange-calcDist(blower.x, blower.y, piece.x, piece.y))*Rules.blowForce)/piece.mass)*dt;
 								piece.xVel -= velIncrease*((blower.x - piece.x)/dist)
 								piece.yVel -= velIncrease*((blower.y - piece.y)/dist)
-								piece.lit = true;
-							}else{
-								piece.lit = false;
 							}
 						}
+					}else{
+						console.log()
 					}
 				}
  				piecesTouched(){
@@ -252,13 +295,24 @@
 			}
 
 			class Piece{
-				constructor(board, x, y){
+				constructor(type, board, x, y, isParticle){
+					debug.expect(board, "object", "board")
+					debug.expectNum(x, "x")
+					debug.expectNum(y, "y")
 					this.board = board;
+					this.type = type;
 					this.x = x;
 					this.y = y;
+					let z;
+					if(isParticle){
+						z = Rules.zOrders.particle;
+					}else{
+						z = Rules.zOrders[this.type];
+					}
+					debug.expectNum(z, "z")
+					this.z = z+Math.random();
 					this.xVel = 0;
 					this.yVel = 0;
-					this.type;
 					this.mass = 1;
 					this.width;
 					this.height;
@@ -281,10 +335,26 @@
 					if(effect.type == "damage"){
 						this.health -= effect.amount;
 					}
-					if(effect.type == "win" && this.type == "destination"){
+					if(effect.type == "win" && this.type == "gate"){
 						this.health = 0;
 						return "next level";
 					}
+				}
+				applyVelocity(dt){
+					let velocity = Math.sqrt(this.xVel*this.xVel+this.yVel*this.yVel);
+					if( velocity > Rules.minSpeed ) {
+						this.x += this.xVel*dt*Rules.gameSpeed;
+						this.y += this.yVel*dt*Rules.gameSpeed;
+					}
+				}
+				applyFriction(dt){
+					this.xVel -= (this.xVel*Rules.friction)*dt*Rules.gameSpeed;
+					this.yVel -= (this.yVel*Rules.friction)*dt*Rules.gameSpeed;
+
+					//if(Math.sqrt(this.xVel*this.xVel+this.yVel*this.yVel) < Rules.minSpeed){
+					//	this.xVel = 0;
+					//	this.yVel = 0;
+					//}
 				}
 				particleTick(){}
 				tick(dt){
@@ -293,11 +363,9 @@
 						if(this.control == "AI"){
 							//this.ai(pieceList);
 						}
-						this.x += this.xVel*dt*Rules.gameSpeed;
-						this.y += this.yVel*dt*Rules.gameSpeed;
+						this.applyVelocity(dt)
 
-						this.xVel -= (this.xVel*Rules.friction)*dt*Rules.gameSpeed;
-						this.yVel -= (this.yVel*Rules.friction)*dt*Rules.gameSpeed;
+						this.applyFriction(dt)
 
 						if(this.x > this.board.size/2){
 							this.dead = true;
@@ -323,14 +391,13 @@
 
 			class Payload extends Piece{
 				constructor(sim, board, x, y){
-					super(board, x, y)
-					this.type = "payload";
+					super("payload", board, x, y)
 					this.mass = 25;
 					this.width = 40;
 					this.height = 40;
 					this.sim = sim;
 					this.hitBoxRadius = 20;
-					this.blowAble = true;
+					this.blowable = true;
 					this.effect = {type: "win", amount: 10};
 					this.health = 10;
 				}
@@ -343,14 +410,13 @@
 				}
 			}
 
-			class Destination extends Piece{
+			class gate extends Piece{
 				constructor(board, x, y){
-					super(board, x, y)
-					this.type = "destination";
+					super("gate", board, x, y)
 					this.width = 150;
 					this.height = 150;
 					this.hitBoxRadius = 5;
-					this.blowAble = false;
+					this.blowable = false;
 					this.effect = {type: "none"};
 				}
 				/*particleTick(dt){
@@ -363,52 +429,50 @@
 				}*/
 			}
 
- 			class Bomb extends Piece{
+ 			class Mine extends Piece{
 				constructor(board, x, y){
-					super(board, x, y)
-					this.type = "bomb";
+					super("mine", board, x, y)
 					this.mass = 25;
 					this.width = 30;
 					this.height = 30;
 					this.hitBoxRadius = 15;
-					this.blowAble = true;
+					this.blowable = true;
 					this.effect = {type: "damage", amount: 10};
 				}
 			}
 
-			class Block extends Piece{
+			class Barricade extends Piece{
 				constructor(board, x, y){
-					super(board, x, y)
-					this.type = "block";
+					super("barricade", board, x, y)
 					this.width = 100;
 					this.height = 100;
-					this.hitBoxRadius = 50;
-					this.blowAble = false;
+					this.hitBoxRadius = 45;
+					this.blowable = false;
 					this.effect = {type: "damage", amount: 10};
 				}
 			}
 			class Destructible extends Piece{
 				constructor(board, x, y){
-					super(board, x, y)
-					this.type = "destructible";
+					super("destructible", board, x, y)
 					this.width = 50;
 					this.height = 50;
 					this.hitBoxRadius = 25;
 					this.health = 1;
 					this.collider = true;
-					this.blowAble = false;
+					this.blowable = false;
 					this.effect = {type: "damage", amount: 10};
 				}
 			}
 			class Turret extends Piece{
 				constructor(sim, board, x, y, fireDelay, bulletSpeed){
-					super(board, x, y)
-					this.type = "turret";
+					super("turret",board, x, y)
+					debug.expectNum(fireDelay, "fireDelay")
+					debug.expectNum(bulletSpeed, "bulletSpeed")
 					this.sim = sim;
 					this.width = 100;
 					this.height = 100;
 					this.hitBoxRadius = 50;
-					this.blowAble = false;
+					this.blowable = false;
 					this.effect = {type: "damage", amount: 10};
 					this.fireDelay = fireDelay;
 					this.timeToNextFire = this.fireDelay;
@@ -417,8 +481,9 @@
 				}
 				tick(dt){
 					this.particleTick(dt);
-					if(this.control == "AI"){
-						//this.ai(pieceList);
+					let target = this.sim.payload;
+					if(target){
+						this.angle = calcAngle(this.x, this.y, target.x, target.y);
 					}
 
 					if(this.timeToNextFire <= 0){
@@ -426,7 +491,7 @@
 						let velocity = this.bulletSpeed;
 						let xVel = velocity*Math.cos(this.angle);
 						let yVel = velocity*Math.sin(this.angle);
-						this.sim.addPiece(this.x, this.y, "bullet", xVel, yVel)
+						this.sim.addPiece(this.x, this.y, "bullet", {type: "bullet", x: this.x, y: this.y, xVel: xVel, yVel: yVel})
 					}else{
 						this.timeToNextFire -= dt*Rules.gameSpeed;
 					}
@@ -440,32 +505,49 @@
 						xAnchor: 0.5,
 						yAnchor: 0.5
 					};
-					let target = this.sim.pieceList[2]
-					this.angle = calcAngle(this.x, this.y, target.x, target.y);
 					context.drawRotated(pieceSpec, Img.turret, camera, radToDeg(this.angle))
 				}
 			}
 			class Bullet extends Piece{
 				constructor(board, x, y, xVel, yVel){
-					super(board, x, y)
-					this.type = "bullet";
+					super("bullet", board, x, y)
+					debug.expectNum(xVel, "xVel")
+					debug.expectNum(yVel, "yVel")
 					this.mass = 25;
 					this.width = 30;
 					this.height = 30;
 					this.xVel = xVel;
 					this.yVel = yVel;
 					this.hitBoxRadius = 15;
-					this.blowAble = true;
+					this.blowable = true;
 					this.effect = {type: "damage", amount: 10};
+				}
+				tick(dt){
+					this.particleTick(dt);
+
+					this.applyVelocity(dt)
+
+					if(this.x > this.board.size/2){
+						this.dead = true;
+					}
+					if(this.x < -this.board.size/2){
+						this.dead = true;
+					}
+					if(this.y > this.board.size/2){
+						this.dead = true;
+					}
+					if(this.y < -this.board.size/2){
+						this.dead = true;
+					}
 				}
 			}
 			class Text extends Piece{
 				constructor(board, x, y, text){
-					super(board, x, y)
-					this.type = "text";
+					super("text", board, x, y)
+					debug.expect(text, "string", "text")
 					this.hitBoxRadius = 0;
 					this.text = text;
-					this.blowAble = false;
+					this.blowable = false;
 					this.effect = {type: "none"};
 				}
 				draw(context, camera){
@@ -479,12 +561,11 @@
 
  			class Blower extends Piece{
 				constructor(sim, board, x, y, control){
-					super(board, x, y)
-					this.type = "blower";
+					super("blower", board, x, y, 1)
 					this.width = 50;
 					this.height = 50;
 					this.hitBoxRadius = 25;
-					this.blowAble = false;
+					this.blowable = false;
 					this.effect = {type: "none"};
 					this.collider = false;
 
@@ -529,7 +610,7 @@
 							let velocity = 750;
 							let xVel = velocity*Math.cos(particleAngle);
 							let yVel = velocity*Math.sin(particleAngle);
-							MakeParticle(this.sim, "force", this.x, this.y, xVel, yVel, radToDeg(particleAngle)+180)
+							MakeParticle(this.sim, "force", this.x, this.y, xVel, yVel, radToDeg(particleAngle)+180, this)
 						}
 					}
 				}
@@ -541,9 +622,6 @@
 					
 				}
 				tick(dt){
-					if(this.control == "AI"){
-						//this.ai(pieceList);
-					}
 					this.moveTick(dt);
 					this.particleTick(dt)
 					if(this.health <= 0 ){
@@ -565,16 +643,21 @@
 			}
 
 			class Particle extends Piece{
-				constructor(board, x, y, xVel, yVel, angle){
-					super(board, x, y)
+				constructor(type, board, x, y, xVel, yVel, angle, parent){
+					super(type, board, x, y, true)
 					this.width = 5;
 					this.height = 5;
 					this.xVel = xVel;
 					this.yVel = yVel;
-					this.blowAble = false;
+					this.blowable = false;
 					this.collider = false;
 					this.lifeRemaining = Rules.blowRange/(xVel+yVel);
 					this.angle = angle;
+					if( parent ) {
+						this.parent = parent;
+						this.px = this.parent.x;
+						this.py = this.parent.y;
+					}
 				}
 				draw(context, camera){
 					let pieceSpec = {
@@ -593,14 +676,16 @@
 				}
 				tick(dt){
 					if(!this.dead){
-						if(this.control == "AI"){
-							//this.ai(pieceList);
+						if( this.parent ) {
+							let pdx = this.parent.x - this.px;
+							let pdy = this.parent.y - this.py;
+							this.x += pdx;
+							this.y += pdy;
+							this.px = this.parent.x;
+							this.py = this.parent.y;
 						}
-						this.x += this.xVel*dt*Rules.gameSpeed;
-						this.y += this.yVel*dt*Rules.gameSpeed;
 
-						this.xVel -= (this.xVel*Rules.friction)*dt*Rules.gameSpeed;
-						this.yVel -= (this.yVel*Rules.friction)*dt*Rules.gameSpeed;
+						this.applyVelocity(dt)
 
 						this.lifeRemaining -= dt;
 						if(this.lifeRemaining <= 0){
@@ -610,51 +695,46 @@
 				}
 			}
 			class Force extends Particle{
-				constructor(board, x, y, xVel, yVel, angle){
-					super(board, x, y, xVel, yVel, angle)
-					this.width = 10;
+				constructor(board, x, y, xVel, yVel, angle, parent){
+					super("force", board, x, y, xVel, yVel, angle, parent)
+					this.width = 40;
 					this.height = 10;
-					this.type = "force";
 					this.lifeRemaining = (Math.random()+0.5)*0.2;
 				}
 			}
 			class Trail extends Particle{
 				constructor(board, x, y, xVel, yVel){
-					super(board, x, y, xVel, yVel)
+					super("trail", board, x, y, xVel, yVel)
 					this.width = 5;
 					this.height = 5;
 					this.angle = Math.random()*360;
-					this.type = "trail";
 					this.lifeRemaining = (Math.random()+0.5)*0.2;
 				}
 			}
 			class Electricity extends Particle{
 				constructor(board, x, y, xVel, yVel){
-					super(board, x, y, xVel, yVel)
+					super("electricity", board, x, y, xVel, yVel)
 					this.width = 20;
 					this.height = 20;
 					this.angle = Math.random()*360;
-					this.type = "electricity";
 					this.lifeRemaining = Math.random()*0.2;
 				}
 			}
 			class PortalEnergy extends Particle{
 				constructor(board, x, y, xVel, yVel){
-					super(board, x, y, xVel, yVel)
+					super("portalEnergy", board, x, y, xVel, yVel)
 					this.width = 20;
 					this.height = 20;
 					this.angle = Math.random()*360;
-					this.type = "portalEnergy";
 					this.lifeRemaining = 0.5;
 				}
 			}
 			class Explosion extends Particle{
 				constructor(board, x, y, xVel, yVel){
-					super(board, x, y, xVel, yVel)
+					super("explosion", board, x, y, xVel, yVel)
 					this.width = 200;
 					this.height = 200;
 					this.angle = 0;
-					this.type = "explosion";
 					this.totalLife = 0.52;
 					this.lifeRemaining = this.totalLife;
 				}
@@ -680,9 +760,9 @@
 					context.draw(pieceSpec, Img[this.type], camera)
 				}
 			}
-			function MakeParticle(sim, type, x, y, xVel, yVel, angle){
+			function MakeParticle(sim, type, x, y, xVel, yVel, angle, parent){
 				if(type == "force"){
-					sim.pieceList.push(new Force(sim.board, x, y, xVel, yVel, angle))
+					sim.pieceList.push(new Force(sim.board, x, y, xVel, yVel, angle, parent))
 				}
 				if(type == "trail"){
 					sim.pieceList.push(new Trail(sim.board, x, y, xVel, yVel))
@@ -718,16 +798,16 @@
 					blower.blowing = false;
 				});
 				$( document ).keydown(function( event ) {
-					if(event.key == "w"){
+					if(event.key == "w" || event.key == "W"){
 						wDown = true;
 					}
-					if(event.key == "s"){
+					if(event.key == "s" || event.key == "S"){
 						sDown = true;
 					}
-					if(event.key == "a"){
+					if(event.key == "a" || event.key == "A"){
 						aDown = true;
 					}
-					if(event.key == "d"){
+					if(event.key == "d" || event.key == "D"){
 						dDown = true;
 					}
 					if(level == 0){
@@ -738,16 +818,16 @@
 							EditLevel(sim, levelPlan, "blower", mouseX, mouseY)
 						}
 						if(event.key == "2"){
-							EditLevel(sim, levelPlan, "destination", mouseX, mouseY)
+							EditLevel(sim, levelPlan, "gate", mouseX, mouseY)
 						}
 						if(event.key == "3"){
 							EditLevel(sim, levelPlan, "payload", mouseX, mouseY)
 						}
 						if(event.key == "4"){
-							EditLevel(sim, levelPlan, "block", mouseX, mouseY)
+							EditLevel(sim, levelPlan, "barricade", mouseX, mouseY)
 						}
 						if(event.key == "5"){
-							EditLevel(sim, levelPlan, "bomb", mouseX, mouseY)
+							EditLevel(sim, levelPlan, "mine", mouseX, mouseY)
 						}
 						if(event.key == "6"){
 							EditLevel(sim, levelPlan, "destructible", mouseX, mouseY)
@@ -758,16 +838,16 @@
 					}
 				});
 				$( document ).keyup(function( event ) {
-					if(event.key == "w"){
+					if(event.key == "w" || event.key == "W"){
 						wDown = false;
 					}
-					if(event.key == "s"){
+					if(event.key == "s" || event.key == "S"){
 						sDown = false;
 					}
-					if(event.key == "a"){
+					if(event.key == "a" || event.key == "A"){
 						aDown = false;
 					}
-					if(event.key == "d"){
+					if(event.key == "d" || event.key == "D"){
 						dDown = false;
 					}
 					
@@ -776,17 +856,17 @@
 			}
  			//VIEW
  			let ImageURLs = {
-				blower: 'images/mover.png',
+				blower: 'images/mover2.png',
 				payload: 'images/payload.png',
-				destination: 'images/gate.png',
-				bomb: 'images/mine.png',
-				block: 'images/block.png',
+				gate: 'images/gate.png',
+				mine: 'images/mine.png',
+				barricade: 'images/barricade.png',
 				destructible: 'images/destructible.png',
 				turret: 'images/turret.png',
 				bullet: 'images/bullet.png',
 				//wind: 'images/wind2.png',
 				background: 'images/black.png',
-				force: 'images/particles/force.png',
+				force: 'images/particles/force2.png',
 				trail: 'images/particles/trail.png',
 				electricity: 'images/particles/lightning.png',
 				portalEnergy: 'images/particles/trail.png',
@@ -866,6 +946,7 @@
  					let camera = {};
  					camera.x = sim.blower.x;
 					camera.y = sim.blower.y;
+					sim.pieceList.sort(function(a, b){return b.z - a.z});
  					for(let i = 0; i < sim.pieceList.length; i++){
 						
 						if(!sim.pieceList[i].dead){
@@ -914,7 +995,7 @@
  			//ORGANIZATION
 			function displayTitleScreen(){
 				$("#canvas").hide()
-				$("#debrief").hide()
+				$("#brief").hide()
 				$("#gameOverScreen").hide()
 				$("#levelSelect").hide()
 				$("#titleScreen").show()
@@ -941,9 +1022,9 @@
 					$("#gameOverScreen").html('<h1 class="menuTitle">You Lose!</h1> <button class="menuButton" onClick="displayLevelSelect()">Main Menu</button> <button class="menuButton" onClick="level = '+level+'; levelPlan = LevelList[level]; Main()">Try Again</button>');
 				}
 			}
-			function displayDebrief(){
+			function displayBrief(){
 				$("#titleScreen").hide()
-				$("#debrief").show()
+				$("#brief").show()
 			}
  			function GameOver(handleView, win){
  				cancelAnimationFrame(handleView)
@@ -967,7 +1048,7 @@
 					let levelPlan = LevelList[level]
 				function tickSim(){
 					let levelPlan = LevelList[level]
-					if(sim.pieceList[2].type != "payload"){
+					if(!sim.payload){
 						 setTimeout(() => {setTimeout(GameOver(handleView, false))},1000)
 					}
 
@@ -1041,33 +1122,39 @@
 				<h1 class="menuTitle">
 					Blower Game
 				</h1>
-				<button class="menuButton" onClick="displayDebrief()">
-					Debriefing
-				</button>
-				<button class="menuButton" onClick="level = 1; levelPlan = LevelList[level]; Main()">
+				<button class="bigMenuButton" onClick="level = 1; levelPlan = LevelList[level]; Main()">
 					Play
+				</button>
+				<br>
+				<button class="menuButton" onClick="displayBrief()">
+					Briefing
 				</button>
 				<button class="menuButton" onClick="displayLevelSelect()">
 					Level Select
 				</button>
 			</div>
-			<div id="debrief" class="menu">
+			<div id="brief" class="menu">
 				<h1 class="menuTitle">
-					Your Debrief
+					Your Mission
 				</h1>
-				<pre class="menuText">
-	The enemy has stolen the Quanum Arc-Reactor and placed it deep behind enemy lines.
-	You must get it back to high command.
-
-	We can get you to the Arc-Reactor, but you will have to get out.
-	Just push it through the blue warp gates and they will lead you back to high command.
-
-	However, they have experimented with it and it is unstable.
-	If it touches anything, it will go critical and destroy one third of the galaxy.
-	This is why you must get it back to us with only your repulser field.
-
-	Good Luck.
-				</pre>
+				<div class="menuText">
+					<p>
+						The enemy has stolen the Quantum Arc-Reactor and placed it deep behind enemy lines.
+						You must get it back to High Command.
+					</p>
+					<p>
+						We can warp you to the Arc-Reactor.
+						Use your repulser to push it through the blue warp gates. They will lead you back to High Command.
+					</p>
+					<p>
+						However, the Arc-Reactor is unstable!
+						If it touches anything, it will go critical and our most valuable asset will be destroyed.
+						This is why you must get it back to us with only your repulser field.
+					</p>
+					<p>
+						Good Luck, Captain.
+					</p>
+				</div>
 				<button class="menuButton" onClick="displayTitleScreen()">
 					Understood
 				</button>
