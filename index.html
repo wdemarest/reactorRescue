@@ -431,7 +431,7 @@
 					super("gate", board, x, y)
 					this.width = 150;
 					this.height = 150;
-					this.hitBoxRadius = 5;
+					this.hitBoxRadius = 7.5;
 					this.blowable = false;
 					this.effect = {type: "none"};
 				}
@@ -828,7 +828,7 @@
 					}
 					if(event.key == "Escape"){
 						if(Rules.gameSpeed){
-							PauseGame()
+							PauseGame(handleView)
 							console.log("pause")
 						}else{
 							UnpauseGame()
@@ -1051,14 +1051,19 @@
 				$("#titleScreen").hide()
 				$("#brief").show()
 			}
- 			function GameOver(handleView, win){
+ 			function GameOver(handleView){
  				$(document).off(".controls")
  				cancelAnimationFrame(handleView)
- 				displayGameOverScreen(win)
 			}
 			function PauseGame(){
 				Rules.gameSpeed = 0;
-				$(".restartLevel").click()
+				$("#restartLevelButton").click(
+					()=>{
+						GameOver(handleView);
+						levelPlan = LevelList[level];
+						Main();
+					}
+				)
 				$("#pauseMenuOuter").show()
 			}
 			function UnpauseGame(){
@@ -1066,6 +1071,7 @@
 				$("#pauseMenuOuter").hide()
 			}
 
+			let handleView;
  			function Main(){
  				UnpauseGame()
  				//level = prompt("Which level would you like to play?");
@@ -1086,7 +1092,10 @@
 				function tickSim(){
 					let levelPlan = LevelList[level]
 					if(!sim.payload){
-						 setTimeout(() => {setTimeout(GameOver(handleView, false))},1000)
+						setTimeout(() => {
+							GameOver(handleView)
+							displayGameOverScreen(false)
+						},1000)
 					}
 
 					sim.timeSinceLastSim = 0;
@@ -1115,12 +1124,12 @@
 
 				$("#titleScreen").hide()
 
-				let handleView;
 				function animateView(){
 					tickView()
 					handleView = requestAnimationFrame( animateView );
 					if(tickSim() == "next level"){
-						GameOver(handleView, true)
+						GameOver(handleView)
+						displayGameOverScreen(true)
 					}
 				}
  				animateView();
@@ -1213,7 +1222,7 @@
 					<button class="menuButton" onclick="UnpauseGame()">
 						Resume Game
 					</button>
-					<button class="menuButton" onclick="GameOver(); levelPlan = LevelList[level]; Main()">
+					<button class="menuButton" id="restartLevelButton">
 						Restart Level
 					</button>
 					<button class="menuButton" onclick="GameOver(false)">

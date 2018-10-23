@@ -206,7 +206,7 @@ function MakeLevelList(){
 			{type: "barricade", x: 300, y: 180},
 		],
 		[//Out of the Box
-			{type: "blower", x: 0, y: 0},
+			{type: "blower", x: 100, y: 0},
 			{type: "gate", x: 0, y: 200},
 			{type: "payload", x: 0, y: 0},
 
@@ -360,7 +360,7 @@ function MakeLevelList(){
 
 			{type: "turret", x: 300, y: 200, fireDelay: 1, bulletSpeed: 50},
 		],
-		[//Defended Spiral
+		[//Spiral
 			{type: "blower", x: 0, y: 100},
 			{type: "gate", x: -100, y: 0},
 			{type: "payload", x: 300, y: 0},
@@ -480,7 +480,7 @@ function MakeLevelList(){
 			{type: "barricade", x: 400, y: 100},
 			{type: "barricade", x: 400, y: 0},
 
-			{type: "turret", x: 0, y: 0, fireDelay: 1, bulletSpeed: 50},
+			{type: "turret", x: 0, y: 0, fireDelay: 1, bulletSpeed: 100},
 		],
 		[//Thread the Needle
 			{type: "blower", x: 100, y: 0},
