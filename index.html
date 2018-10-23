@@ -82,6 +82,7 @@
 			*/
 			let Rules = {boardSize: 2000}
 			let FPS = 60;
+			let counter = 0;
 			
 
 			let ruleSet = {
@@ -92,7 +93,7 @@
 				minSpeed: 1,
 				playerSpeed: 500,
 				gameSpeed: 0,
-				zOrders: {particle: 0, blower: 1, payload: 2, bullet: 3, mine: 4, destructible: 5, turret: 6, barricade: 7, gate: 8, text: 9}
+				zOrders: {text: -1, particle: 0, blower: 1, payload: 2, bullet: 3, mine: 4, destructible: 5, turret: 6, barricade: 7, gate: 8, receptical: 8}
 			}
 
 			let canvasWidth;
@@ -161,6 +162,7 @@
 			class Board{
 				constructor(size){
 					this.size = size;
+ 					this.earthIsOn = false;
 				}
 				pickRandomLocation(){
 					return Math.random()*this.size-(this.size/2)
@@ -170,78 +172,52 @@
  				constructor(board){
  					this.pieceList = [];
 
- 					let newPiece;
-					
-					this.addPiece = (x, y, type, object) => {
- 						if(type == "blower"){
-							newPiece = (new Blower(this, board, x, y))
-						}
- 						if(type == "payload"){
-							newPiece = (new Payload(this, board, x, y))
-						}
-						if(type == "gate"){
-							newPiece = (new gate(board, x, y))
-						}
-						if(type == "mine"){
-							newPiece = (new Mine(board, x, y))
-						}
-						if(type == "barricade"){
-							newPiece = (new Barricade(board, x, y))
-						}
-						if(type == "destructible"){
-							newPiece = (new Destructible(board, x, y))
-						}
-						if(type == "turret"){
-							newPiece = (new Turret(this, board, x, y, object.fireDelay, object.bulletSpeed))
-						}
-						if(type == "bullet"){
-							newPiece = (new Bullet(board, x, y, object.xVel, object.yVel))
-						}
-						if(type == "text"){
-							newPiece = (new Text(board, x, y, object.text))
-						}
-						this.pieceList.push(newPiece)
-					}
 					this.nowPrior = null;
  					this.board = board;
+ 					this.gameFailLatch = false;
 
- 					for (let i = 0; i < levelPlan.length; i++) {
- 						let object = levelPlan[i];
+ 					for (let i = 0; i < levelPlan.pieceSource.length; i++) {
+ 						let object = levelPlan.pieceSource[i];
 					
 						this.addPiece(object.x, object.y, object.type, object)
 					}
- 					/*
- 					for (let i = 0; i < Rules.blowerCount; i++) {
-						let x = board.pickRandomLocation();
-						let y = board.pickRandomLocation();
-					
-						this.blowerList.push (new Blower(board, x, y, "AI"));
-					}
- 					this.blower = this.blowerList[0];
- 					this.pieceList = [];
- 					for (let i = 0; i < (1); i++) {
-						let x = board.pickRandomLocation();
-						let y = board.pickRandomLocation();
-						this.addPiece(x, y, "payload")
-					}
-					for (let i = 0; i < (1); i++) {
-						let x = board.pickRandomLocation();
-						let y = board.pickRandomLocation();
-						this.addPiece(x, y, "gate")
-					}
-					for (let i = 0; i < (Rules.mineDensity*(board.size^2)); i++) {
-						let x = board.pickRandomLocation();
-						let y = board.pickRandomLocation();
-						this.addPiece(x, y, "mine")
-					}
-					for (let i = 0; i < (Rules.barricadeDensity*(board.size^2)); i++) {
-						let x = board.pickRandomLocation();
-						let y = board.pickRandomLocation();
-						this.addPiece(x, y, "barricade")
-					}
-					*/
  				}
- 				find(type){
+				addPiece(x, y, type, object){
+					let newPiece;
+					let board = this.board
+					if(type == "blower"){
+						newPiece = (new Blower(this, board, x, y))
+					}
+					if(type == "payload"){
+						newPiece = (new Payload(this, board, x, y))
+					}
+					if(type == "gate"){
+						newPiece = (new Gate(board, x, y))
+					}
+					if(type == "receptical"){
+						newPiece = (new Receptical(this, board, x, y))
+					}
+					if(type == "mine"){
+						newPiece = (new Mine(board, x, y))
+					}
+					if(type == "barricade"){
+						newPiece = (new Barricade(board, x, y))
+					}
+					if(type == "destructible"){
+						newPiece = (new Destructible(board, x, y))
+					}
+					if(type == "turret"){
+						newPiece = (new Turret(this, board, x, y, object.fireDelay, object.bulletSpeed))
+					}
+					if(type == "bullet"){
+						newPiece = (new Bullet(board, x, y, object.xVel, object.yVel))
+					}
+					if(type == "text"){
+						newPiece = (new Text(board, x, y, object.text, object.condition))
+					}
+					this.pieceList.push(newPiece)
+				}
+				find(type){
  					return this.pieceList.find((piece)=>piece.type == type);
  				}
  				exists(type){
@@ -355,6 +331,11 @@
 						this.health = 0;
 						return "next level";
 					}
+					if(effect.type == "attach" && this.type == "payload"){
+						this.x = effect.x;
+						this.y = effect.y;
+						this.board.earthIsOn = true;
+					}
 				}
 				applyVelocity(dt){
 					let velocity = Math.sqrt(this.xVel*this.xVel+this.yVel*this.yVel);
@@ -420,13 +401,13 @@
 				particleTick(dt){
 					for (var i = 0; i < dt*10; i++) {
 						if(Math.random()>0.95){
-							MakeParticle(this.sim, "electricity", this.x+((Math.random()-0.5)*20), this.y+((Math.random()-0.5)*10), 0, 0, 0)
+							MakeParticle(this.sim, "electricity", this.x+((Math.random()-0.5)*20), this.y+((Math.random()-0.5)*20), 0, 0, 0)
 						}
 					}
 				}
 			}
 
-			class gate extends Piece{
+			class Gate extends Piece{
 				constructor(board, x, y){
 					super("gate", board, x, y)
 					this.width = 150;
@@ -443,6 +424,27 @@
 					let yVel = velocity*Math.sin(particleAngle);
 					MakeParticle(this.sim, "force", this.x, this.y, xVel, yVel, radToDeg(particleAngle)+180)
 				}*/
+			}
+			class Receptical extends Piece{
+				constructor(sim, board, x, y){
+					super("receptical", board, x, y)
+					this.sim = sim;
+					this.board = board;
+					this.width = 170;
+					this.height = 170;
+					this.hitBoxRadius = 10;
+					this.blowable = false;
+					this.effect = {type: "attach", x: this.x, y: this.y};
+				}
+				particleTick(dt){
+					if(this.board.earthIsOn){
+						for (var i = 0; i < dt*100; i++) {
+							if(Math.random()>0.1){
+								MakeParticle(this.sim, "electricity", this.x+((Math.random()-0.5)*40), this.y+((Math.random()-0.5)*40)-50, 0, 0, 0)
+							}
+						}
+					}
+				}
 			}
 
  			class Mine extends Piece{
@@ -558,20 +560,26 @@
 				}
 			}
 			class Text extends Piece{
-				constructor(board, x, y, text){
+				constructor(board, x, y, text, condition){
 					super("text", board, x, y)
 					debug.expect(text, "string", "text")
 					this.hitBoxRadius = 0;
+					this.board = board;
 					this.text = text;
+					this.condition = condition;
 					this.blowable = false;
 					this.effect = {type: "none"};
 				}
 				draw(context, camera){
-					let drawX = this.x-(camera.x-canvasWidth/2);
-					let drawY = this.y-(camera.y-canvasHeight/2);
-					context.font = "30px Arial";
-					context.fillStyle = 'white';
-					context.fillText(this.text, drawX, drawY);
+					let conditionMet = false;
+					if(this.condition == "power" && this.board.earthIsOn){conditionMet = true}
+					if(!this.condition || conditionMet){
+						let drawX = this.x-(camera.x-canvasWidth/2);
+						let drawY = this.y-(camera.y-canvasHeight/2);
+						context.font = "30px Arial";
+						context.fillStyle = 'white';
+						context.fillText(this.text, drawX, drawY);
+					}
 				}
 			}
 
@@ -884,6 +892,7 @@
 				blower: 'images/mover2.png',
 				payload: 'images/payload.png',
 				gate: 'images/gate.png',
+				receptical: 'images/receptical.png',
 				mine: 'images/mine.png',
 				barricade: 'images/barricade.png',
 				destructible: 'images/destructible.png',
@@ -891,6 +900,8 @@
 				bullet: 'images/bullet.png',
 				//wind: 'images/wind2.png',
 				background: 'images/black.png',
+				earthOff: 'images/earthOff.png',
+				earthOn: 'images/earthOn.png',
 				force: 'images/particles/force2.png',
 				trail: 'images/particles/trail.png',
 				electricity: 'images/particles/lightning.png',
@@ -943,7 +954,8 @@
 						}
 					}.bind(context)
 					context.clear = function(spec, imageObj){
-						this.drawImage(Img.background, 0, 0, canvas.width, canvas.height);
+						let backgroundName = (levelPlan.background ? (board.earthIsOn ? "earthOn" : "earthOff") : "background")
+						this.drawImage(Img[backgroundName], 0, 0, canvas.width, canvas.height);
 					}.bind(context)
 					/*context.clearMinimap = function(spec, imageObj){
 						this.drawImage(Img.background, 0, 0, 280, 260);
@@ -1029,20 +1041,22 @@
 				$("#gameOverScreen").hide()
 				$("#titleScreen").hide()
 				$("#levelSelect").show()
-				$("#levelSelect").html('');
+				$("#levelSelect").empty();
 				for (let i = 1; i < LevelList.length; i++) {
 					$("#levelSelect").append('<button class="menuButton" onClick="level = '+i+'; levelPlan = LevelList[level]; Main()">'+i+'</button>');
 				}
 				$("#levelSelect").prepend('<h1 class="menuTitle">Choose A Level</h1>')
 				$("#levelSelect").append('<br> </br> <button class="menuButton" onClick="level = 0; levelPlan = LevelList[0]; Main()">Level Builder</button> <br> </br> <button class="menuButton" onClick="displayTitleScreen()">Back</button>');
 			}
-			function displayGameOverScreen(win){
+			function displayGameOverScreen(win, startTime){
 				$("#canvas").hide()
 				$("#levelSelect").hide()
 				$("#menus").show()
 				$("#gameOverScreen").show()
+				$("#gameOverScreen").empty();
 				if(win){
-					$("#gameOverScreen").html('<h1 class="menuTitle">You Win!</h1> <button class="menuButton" onClick="displayLevelSelect()">Main Menu</button> <button class="menuButton" onClick="level = '+level+'; levelPlan = LevelList[level]; Main()">Play Again</button> <button class="menuButton" onClick="level = '+(level+1)+'; levelPlan = LevelList[level]; Main()">Next Level</button>');
+					let time = Math.floor((Date.now()-startTime)/100)/10; //this is to get just 1 decimal point of detail.
+					$("#gameOverScreen").html('<h1 class="menuTitle">You Win!</h1> <div class="menuText">Level '+level+' completed in '+time+' seconds!</div> <button class="menuButton" onClick="displayLevelSelect()">Main Menu</button> <button class="menuButton" onClick="level = '+level+'; levelPlan = LevelList[level]; Main()">Play Again</button> <button class="menuButton" onClick="level = '+(level+1)+'; levelPlan = LevelList[level]; Main()">Next Level</button>');
 				}else{
 					$("#gameOverScreen").html('<h1 class="menuTitle">You Lose!</h1> <button class="menuButton" onClick="displayLevelSelect()">Main Menu</button> <button class="menuButton" onClick="level = '+level+'; levelPlan = LevelList[level]; Main()">Try Again</button>');
 				}
@@ -1073,6 +1087,7 @@
 
 			let handleView;
  			function Main(){
+ 				let startTime = Date.now();
  				UnpauseGame()
  				//level = prompt("Which level would you like to play?");
 				wDown = false;
@@ -1091,11 +1106,12 @@
 				
 				function tickSim(){
 					let levelPlan = LevelList[level]
-					if(!sim.payload){
+					if( !sim.gameFailLatch && !sim.payload){
+						sim.gameFailLatch = true;
 						setTimeout(() => {
 							GameOver(handleView)
 							displayGameOverScreen(false)
-						},1000)
+						},2000)
 					}
 
 					sim.timeSinceLastSim = 0;
@@ -1129,7 +1145,7 @@
 					handleView = requestAnimationFrame( animateView );
 					if(tickSim() == "next level"){
 						GameOver(handleView)
-						displayGameOverScreen(true)
+						displayGameOverScreen(true, startTime)
 					}
 				}
  				animateView();
@@ -1166,7 +1182,7 @@
 		<div id="menus">
 			<div id="titleScreen" class="menu">
 				<h1 class="menuTitle">
-					Blower Game
+					Reactor Rescue
 				</h1>
 				<button class="bigMenuButton" onClick="level = 1; levelPlan = LevelList[level]; Main()">
 					Play
@@ -1225,7 +1241,7 @@
 					<button class="menuButton" id="restartLevelButton">
 						Restart Level
 					</button>
-					<button class="menuButton" onclick="GameOver(false)">
+					<button class="menuButton" onclick="GameOver(); displayGameOverScreen(true, 0); displayTitleScreen()">
 						Main Menu
 					</button>
 				</div>
