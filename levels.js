@@ -23,21 +23,11 @@ function MakeLevelList(){
 			],
 		},
 		{
+			isTutorial: true,
 			pieceSource: [//Tutorial 1
-				{type: "blower", x: 0, y: -50},
-				{type: "gate", x: 0, y: 100},
-				{type: "payload", x: 0, y: 0},
-
-				{type: "text", x: -300, y: -150, text: "Welcome! Move the mouse to turn your ship."},
-				{type: "text", x: -300, y: -100, text: "Put your mouse pointer below your ship and click."},
-				{type: "text", x: -250, y: 0, text: "This is your ship."},
-			],
-		},
-		{
-			pieceSource: [//Tutorial 2
 				{type: "blower", x: 0, y: -760},
-				{type: "gate", x: 0, y: 900},
-				{type: "payload", x: 0, y: 800},
+				{type: "gate", x: 920, y: 900},
+				{type: "payload", x: 920, y: 800},
 
 				{type: "text", x: -300, y: -800, text: "Press w, a, s, and d to move your ship."},
 				{type: "text", x: -300, y: -700, text: "Go down until you see more instructions."},
@@ -45,13 +35,16 @@ function MakeLevelList(){
 				{type: "text", x: -300, y: -150, text: "Keep going down."},
 				{type: "text", x: -300, y: 200, text: "Hold down the mouse to activate your repulser field."},
 				{type: "text", x: -300, y: 250, text: "Down again."},
-				{type: "text", x: -300, y: 600, text: "Great! Now use your repulser field to push the payload into the Gate."},
-				{type: "text", x: -300, y: 810, text: "This is the payload."},
-				{type: "text", x: -300, y: 910, text: "This is the gate."},
+				{type: "text", x: -300, y: 600, text: "Try hitting escape on your keyboard."},
+				{type: "text", x: -300, y: 650, text: "Go to the right this time."},
+				{type: "text", x: 625, y: 600, text: "Great! Now use your repulser field to push the payload into the Gate."},
+				{type: "text", x: 625, y: 810, text: "This is the payload."},
+				{type: "text", x: 625, y: 910, text: "This is the gate."},
 			],
 		},
 		{
-			pieceSource: [//Tutorial 3
+			isTutorial: true,
+			pieceSource: [//Tutorial 2
 				{type: "blower", x: -100, y: 0},
 				{type: "gate", x: 0, y: 150},
 				{type: "payload", x: 0, y: -100},
@@ -62,7 +55,8 @@ function MakeLevelList(){
 			],
 		},
 		{
-			pieceSource: [//Tutorial 4
+			isTutorial: true,
+			pieceSource: [//Tutorial 3
 				{type: "blower", x: -0, y: -150},
 				{type: "gate", x: 0, y: 300},
 				{type: "payload", x: 0, y: 0},
@@ -84,7 +78,8 @@ function MakeLevelList(){
 			],
 		},
 		{
-			pieceSource: [//Tutorial 5
+			isTutorial: true,
+			pieceSource: [//Tutorial 4
 				{type: "blower", x: -0, y: 0},
 				{type: "gate", x: 0, y: 500},
 				{type: "payload", x: 0, y: 100},

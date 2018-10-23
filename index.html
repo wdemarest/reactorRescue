@@ -65,7 +65,7 @@
 			}
 			#playButton{
 				width: 100px;
-       			height: 50px;
+	   			height: 50px;
 			}
 		</style>
 		<title> Blower Game </title>
@@ -76,6 +76,7 @@
 		</script>
 		<script src="levels.js" charset="utf-8"></script>
 		<script src="debug.js" charset="utf-8"></script>
+		<script src="howler.js" charset="utf-8"></script>
 		<script>
 			/*
 				
@@ -109,7 +110,38 @@
 
 			Rules = Object.assign(Rules, ruleSet)
 
-
+			function SoundBank(){
+				var list = [];
+				var handle = {};
+				this.load = function(name,url) {
+					list[name] = new Howl({
+						urls: [url]
+					});
+				};
+				this.play = function(name) {
+					handle[name] = list[name].play();
+					return handle[name];
+				};
+				/*this.loop = function(name) {
+					handle[name] = list[name].loop();
+					return handle[name];
+				};*/
+				this.stop = function(name) {
+					if( handle[name] ) {
+						handle[name].stop();
+					}
+				};
+				this.stopAll = function(name) {
+					for( var i in handle ) {
+						handle[i].stop();
+					}
+				}
+				return this;
+			}
+			let soundBank = new SoundBank;
+			$(document).on('click',".btn", function(){
+			    //soundBank.play("buttonHit");
+			});
 			function degToRad(deg){
 				return (deg/180*Math.PI);
 			}
@@ -914,9 +946,23 @@
 				constructor(){
  				}
 				
- 				imageLoad(imageURLs, target, callbackFn){
+ 				loadFiles(imageURLs, target, callbackFn){
 					let imagesRequested = 0;
 					let imagesLoaded = 0;
+
+					for(let key in imageURLs){
+						let image = imageURLs[key];
+						target[key] = new Image();
+						target[key].onload = function(){
+							imagesLoaded ++
+						};
+						target[key].src = image;
+						imagesRequested ++;
+					}
+
+					soundBank = new SoundBank();
+					//soundBank.load("buttonHit","sound/buttonHit.mp3");
+
 					for(let key in imageURLs){
 						let image = imageURLs[key];
 						target[key] = new Image();
@@ -1159,7 +1205,7 @@
 				console.assert(canvasHeight > 0)
 
 				let view = new View();
-				view.imageLoad(ImageURLs, Img, Main);
+				view.loadFiles(ImageURLs, Img, Main);
 				
 				$(window).resize(function(){
 					let canvasId = "canvas"
@@ -1173,9 +1219,9 @@
 			});
 			
 			//art by: eleksey goldis
-    </script>
+	</script>
   </body>
-</html>        
+</html>		
 		</script>
 	</head>
 	<body>
