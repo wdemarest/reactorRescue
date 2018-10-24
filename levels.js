@@ -549,12 +549,12 @@ function MakeLevelList(){
 				{type: "gate", x: 0, y: 750},
 				{type: "payload", x: 0, y: -900},
 
-				{type: "turret", x: 500, y: -800, fireDelay: 0.5, bulletSpeed: 400},
-				{type: "turret", x: -500, y: -800, fireDelay: 0.5, bulletSpeed: 400},
-				{type: "turret", x: 500, y: 0, fireDelay: 0.5, bulletSpeed: 400},
-				{type: "turret", x: -500, y: 0, fireDelay: 0.5, bulletSpeed: 400},
-				{type: "turret", x: 500, y: 900, fireDelay: 0.5, bulletSpeed: 400},
-				{type: "turret", x: -500, y: 900, fireDelay: 0.5, bulletSpeed: 400},
+				{type: "turret", x: 500, y: -800, fireDelay: 0.5, bulletSpeed: 500},
+				{type: "turret", x: -500, y: -800, fireDelay: 0.5, bulletSpeed: 500},
+				{type: "turret", x: 500, y: 0, fireDelay: 0.5, bulletSpeed: 500},
+				{type: "turret", x: -500, y: 0, fireDelay: 0.5, bulletSpeed: 500},
+				{type: "turret", x: 500, y: 900, fireDelay: 0.5, bulletSpeed: 500},
+				{type: "turret", x: -500, y: 900, fireDelay: 0.5, bulletSpeed: 500},
 
 				{type: "barricade", x: 0, y: -500},
 
@@ -574,7 +574,7 @@ function MakeLevelList(){
 		{
 			background: "earthOff",
 			background2: "earthOn",
-			//zoom: 300,
+			//zoom: 3,
 			isVictoryLevel: true,
 			pieceSource: [//Victory
 				{type: "blower", x: 0, y: 200},
