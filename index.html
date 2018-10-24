@@ -76,7 +76,7 @@
 		</script>
 		<script src="levels.js" charset="utf-8"></script>
 		<script src="debug.js" charset="utf-8"></script>
-		<script src="howler.js" charset="utf-8"></script>
+		<script src="howler2.js" charset="utf-8"></script>
 		<script>
 			/*
 				
@@ -113,19 +113,22 @@
 			function SoundBank(){
 				var list = [];
 				var handle = {};
-				this.load = function(name,url) {
+				this.load = function(name,src) {
 					list[name] = new Howl({
-						urls: [url]
+						src: [src]
 					});
+				};
+				this.loadLoop = function(name,params) {
+					list[name] = new Howl(params);
 				};
 				this.play = function(name) {
 					handle[name] = list[name].play();
 					return handle[name];
 				};
-				/*this.loop = function(name) {
-					handle[name] = list[name].loop();
+				this.playLoop = function(name) {
+					handle[name] = list[name].play("main");
 					return handle[name];
-				};*/
+				};
 				this.stop = function(name) {
 					if( handle[name] ) {
 						handle[name].stop();
@@ -139,9 +142,9 @@
 				return this;
 			}
 			let soundBank = new SoundBank;
-			$(document).on('click',".btn", function(){
-			    //soundBank.play("buttonHit");
-			});
+			/*$(document).on('click',".btn", function(){
+				soundBank.play("buttonHit");
+			});*/
 			function degToRad(deg){
 				return (deg/180*Math.PI);
 			}
@@ -411,7 +414,11 @@
 						if(this.health < 1){
 							this.dead = true;
 							if(this.type == "payload"){
+								soundBank.play("explosionBig");
 								MakeParticle(this.sim, "explosion", this.x, this.y, this.xVel/3, this.yVel/3, 0)	
+							}
+							if(this.type == "destructible"){
+								soundBank.play("explosionSmall");
 							}
 						}
 					}
@@ -537,6 +544,7 @@
 					}
 
 					if(this.timeToNextFire <= 0){
+						soundBank.play("shot");
 						this.timeToNextFire = this.fireDelay;
 						let velocity = this.bulletSpeed;
 						let xVel = velocity*Math.cos(this.angle);
@@ -848,6 +856,7 @@
 					blower.setTarget(mouseX, mouseY)
 				});
 				$( document ).on("mousedown.controls", null,function( event ) {
+					//soundBank.playLoop("repulse");
 					blower.blowing = true;
 				});
 				$( document ).on("mouseup.controls", null, function( event ) {
@@ -961,7 +970,26 @@
 					}
 
 					soundBank = new SoundBank();
-					//soundBank.load("buttonHit","sound/buttonHit.mp3");
+					soundBank.load("buttonHit","sound/buttonHit.mp3");
+					soundBank.load("explosionBig","sound/explosionBig.mp3");
+					soundBank.load("explosionSmall","sound/explosionSmall2.wav");
+					soundBank.load("shot","sound/shot.wav");
+					soundBank.loadLoop("repulse",{
+						src: "sound/repulse2.wav",
+						loop: true,
+						sprite: {
+							main: [0, 10000, true]
+						}
+					});
+					soundBank.loadLoop("shipThrum",{
+						src: "sound/shipThrumShort.mp3",
+						loop: true,
+						sprite: {
+							main: [0, 10000, true]
+						}
+					});
+
+					//soundBank.playLoop("shipThrum");
 
 					for(let key in imageURLs){
 						let image = imageURLs[key];

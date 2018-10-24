@@ -244,7 +244,7 @@ function MakeLevelList(){
 				{type: "gate", x: 0, y: 200},
 				{type: "payload", x: 0, y: -200},
 
-				{type: "turret", x: 0, y: 0, fireDelay: 2, bulletSpeed: 50},
+				{type: "turret", x: 0, y: 0, fireDelay: 1, bulletSpeed: 50},
 
 				{type: "text", x: -100, y: -150, text: "This is a turret."},
 				{type: "text", x: -200, y: -75, text: "They fire bullets at the payload."},
