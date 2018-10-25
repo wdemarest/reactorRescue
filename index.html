@@ -108,9 +108,6 @@
 		<script src="debug.js" charset="utf-8"></script>
 		<script src="howler2.js" charset="utf-8"></script>
 		<script>
-			/*
-				
-			*/
 			let Rules = {boardSize: 2000}
 			let FPS = 60;
 			let counter = 0;
@@ -238,6 +235,16 @@
 				}
 				pickRandomLocation(){
 					return Math.random()*this.size-(this.size/2)
+				}
+				get xMin() { return -this.size/2; }
+				get xMax() { return this.size/2; }
+				get yMin() { return -this.size/2; }
+				get yMax() { return this.size/2; }
+				contains(x,y) {
+					return x>=this.xMin && x<=this.xMax && y>=this.yMin && y<=this.yMax;
+				}
+				clamp(x,y) {
+					return [Math.min(Math.max(x,this.xMin),this.xMax),Math.min(Math.max(y,this.yMin),this.yMax)];
 				}
 			}
  			class Sim{
@@ -445,18 +452,10 @@
 
 						this.applyFriction(dt)
 
-						if(this.x > this.board.size/2){
+						if( !this.board.contains(this.x,this.y) ) {
 							this.dead = true;
 						}
-						if(this.x < -this.board.size/2){
-							this.dead = true;
-						}
-						if(this.y > this.board.size/2){
-							this.dead = true;
-						}
-						if(this.y < -this.board.size/2){
-							this.dead = true;
-						}
+
 						if(this.health < 1){
 							this.dead = true;
 							if(this.type == "payload" && !this.warping){
@@ -643,16 +642,7 @@
 
 					this.applyVelocity(dt)
 
-					if(this.x > this.board.size/2){
-						this.dead = true;
-					}
-					if(this.x < -this.board.size/2){
-						this.dead = true;
-					}
-					if(this.y > this.board.size/2){
-						this.dead = true;
-					}
-					if(this.y < -this.board.size/2){
+					if( !this.board.contains(this.x,this.y) ) {
 						this.dead = true;
 					}
 				}
@@ -722,6 +712,7 @@
 					if(dDown){
 						this.x += this.speed*dt*Rules.gameSpeed;
 					}
+					[this.x,this.y] = this.board.clamp(this.x,this.y);
 				}
 				particleTick(dt){
 					if(Rules.gameSpeed){
@@ -1015,16 +1006,6 @@
 					let imagesRequested = 0;
 					let imagesLoaded = 0;
 
-					for(let key in imageURLs){
-						let image = imageURLs[key];
-						target[key] = new Image();
-						target[key].onload = function(){
-							imagesLoaded ++
-						};
-						target[key].src = image;
-						imagesRequested ++;
-					}
-
 					soundBank = new SoundBank();
 					soundBank.load("explosionBig","sound/explosionBig.mp3");
 					soundBank.load("explosionSmall","sound/explosionSmall2.wav");
@@ -1105,9 +1086,22 @@
 							this.drawImage(imageObj, drawX, drawY, spec.width, spec.height);
 						}
 					}.bind(context)
-					context.clear = function(spec, imageObj){
-						let backgroundName = (levelPlan.background ? (board.earthIsOn ? "earthOn" : "earthOff") : "background")
-						this.drawImage(Img[backgroundName], 0, 0, canvas.width, canvas.height);
+					context.clear = function(sim){
+						if( levelPlan.backgroundImg && levelPlan.backgroundImg.complete ) {
+							let img = levelPlan.backgroundImg;
+							let xPct = (sim.blower.x - board.xMin) / (board.size + context.canvas.width);
+							let yPct = (sim.blower.y - board.yMin) / (board.size + context.canvas.height);
+							let bx = img.width * 0.40 * xPct;
+							let by = img.height * 0.40 * yPct;
+							let bw = img.width * 0.60;
+							let bh = img.height * 0.60;
+							this.drawImage(img, bx, by, bw, bh, 0, 0, canvas.width, canvas.height);
+						}
+						else {
+							let backgroundName = levelPlan.background ? (board.earthIsOn ? "earthOn" : "earthOff") : "background";
+							let backgroundImg = Img[backgroundName];
+							this.drawImage(backgroundImg, 0, 0, canvas.width, canvas.height);
+						}
 					}.bind(context)
 					/*context.clearMinimap = function(spec, imageObj){
 						this.drawImage(Img.background, 0, 0, 280, 260);
@@ -1131,7 +1125,7 @@
 					return context
 				}
  				render(context, sim){
-					context.clear();
+					context.clear(sim);
  					let camera = {};
  					camera.x = sim.blower.x;
 					camera.y = sim.blower.y;
@@ -1272,7 +1266,11 @@
 				let context = view.myCanvas('canvas', board);
 				let sim = new Sim(board);
 				initControls(sim);
-				let levelPlan = LevelList[level]
+				let levelPlan = LevelList[level];
+				if( levelPlan.backgroundUrl ) {
+					levelPlan.backgroundImg = new Image();
+					levelPlan.backgroundImg.src = levelPlan.backgroundUrl;
+				}
 				
 				function tickSim(){
 					let levelPlan = LevelList[level]
