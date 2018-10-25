@@ -126,6 +126,8 @@
 				gameSpeed: 0,
 				volume: 0.1,
 				musicVolume: 0.03,
+				isDemo: false,
+				demoLevelLimit: 8,
 				zOrders: {text: -1, particle: 0, blower: 1, payload: 2, bullet: 3, mine: 4, destructible: 5, turret: 6, barricade: 7, gate: 8, receptical: 8}
 			}
 
@@ -431,11 +433,6 @@
 				applyFriction(dt){
 					this.xVel -= (this.xVel*Rules.friction)*dt*Rules.gameSpeed;
 					this.yVel -= (this.yVel*Rules.friction)*dt*Rules.gameSpeed;
-
-					//if(Math.sqrt(this.xVel*this.xVel+this.yVel*this.yVel) < Rules.minSpeed){
-					//	this.xVel = 0;
-					//	this.yVel = 0;
-					//}
 				}
 				particleTick(){}
 				tick(dt){
@@ -491,12 +488,12 @@
 					if(this.warping){
 						this.xVel = 0;
 						this.yVel = 0;
-						this.warpParticleCount += 10;
+						this.warpParticleCount += 15;
 					}
-					for (var i = 0; i < dt*this.warpParticleCount; i++) {
+					for (var i = 0; i < dt*this.warpParticleCount*Rules.gameSpeed; i++) {
 						MakeParticle(this.sim, "trail", this.x+((Math.random()-0.5)*40), this.y+((Math.random()-0.5)*40), 0, 0, 0)
 					}
-					for (var i = 0; i < dt*10; i++) {
+					for (var i = 0; i < dt*10*Rules.gameSpeed; i++) {
 						if(Math.random()>0.95){
 							MakeParticle(this.sim, "electricity", this.x+((Math.random()-0.5)*20), this.y+((Math.random()-0.5)*20), 0, 0, 0)
 						}
@@ -538,7 +535,7 @@
 					if(this.sim.payload.attached && !this.board.earthIsOn){
 						this.particleCount += 0.5;
 					}
-					for(var i = 0; i < dt*this.particleCount; i++) {
+					for(var i = 0; i < dt*this.particleCount*Rules.gameSpeed; i++) {
 						if(Math.random()>0.1){
 							MakeParticle(this.sim, "electricity", this.x+((Math.random()-0.5)*40), this.y+((Math.random()-0.5)*40)-50, 0, 0, 0)
 						}
@@ -727,7 +724,9 @@
 					}
 				}
 				particleTick(dt){
-					MakeParticle(this.sim, "trail", this.x+((Math.random()-0.5)*20), this.y+((Math.random()-0.5)*10), 0, 0, 0)
+					if(Rules.gameSpeed){
+						MakeParticle(this.sim, "trail", this.x+((Math.random()-0.5)*20), this.y+((Math.random()-0.5)*10), 0, 0, 0)
+					}
 					if(this.blowing){
 						for (var i = 0; i < 100*dt*Rules.gameSpeed; i++) {
 							let particleAngleMargin = degToRad(90)
@@ -741,9 +740,6 @@
 				}
 				ai(pieceList){
 					let directionList = ["up", "down", "left", "right"]
-					//if(Math.random() > 0.999){
-					//	this.direction = directionList[Math.floor(Math.random()*4)]
-					//}
 					
 				}
 				tick(dt){
@@ -1001,7 +997,6 @@
 				destructible: 'images/destructible.png',
 				turret: 'images/turret.png',
 				bullet: 'images/bullet.png',
-				//wind: 'images/wind2.png',
 				background: 'images/black.png',
 				earthOff: 'images/earthOff.png',
 				earthOn: 'images/earthOn.png',
@@ -1010,7 +1005,6 @@
 				electricity: 'images/particles/lightning.png',
 				portalEnergy: 'images/particles/trail.png',
 				explosion: 'images/explosion.png',
-				//minimapBackground: 'images/minimapBackground.jpg',
 			};
  			let Img = {};
  			class View{
@@ -1201,7 +1195,9 @@
 				$("#levelSelect").show()
 				$("#levelSelect").empty();
 				for (let i = 1; i < LevelList.length; i++) {
-					$("#levelSelect").append('<button class="menuButton levelButton" onClick="level = '+i+'; levelPlan = LevelList[level]; startGameMusic(); Main()">'+i+'</button>');
+					if(i <= Rules.demoLevelLimit || !Rules.isDemo){
+						$("#levelSelect").append('<button class="menuButton levelButton" onClick="level = '+i+'; levelPlan = LevelList[level]; startGameMusic(); Main()">'+i+'</button>');
+					}
 					if(i%10 == 0){
 						$("#levelSelect").append('<br>');
 					}
@@ -1217,7 +1213,10 @@
 				$("#gameOverScreen").empty();
 				if(win){
 					let time = Math.floor((Date.now()-startTime)/100)/10; //this is to get just 1 decimal point of detail.
-					$("#gameOverScreen").html('<h1 class="menuTitle">You Win!</h1> <div class="menuText">Level '+level+' completed in '+time+' seconds!</div> <button class="menuButton" onClick="startMenuMusic(); displayTitleScreen()">Main Menu</button> <button class="menuButton" onClick="level = '+level+'; levelPlan = LevelList[level]; Main()">Play Again</button> <button class="menuButton" onClick="level = '+(level+1)+'; levelPlan = LevelList[level]; Main()">Next Level</button>');
+					$("#gameOverScreen").html('<h1 class="menuTitle">You Win!</h1> <div class="menuText">Level '+level+' completed in '+time+' seconds!</div> <button class="menuButton" onClick="startMenuMusic(); displayTitleScreen()">Main Menu</button> <button class="menuButton" onClick="level = '+level+'; levelPlan = LevelList[level]; Main()">Play Again</button> <button id="nextLevelButton" class="menuButton" onClick="level = '+(level+1)+'; levelPlan = LevelList[level]; Main()">Next Level</button>');
+					if(level == Rules.demoLevelLimit && Rules.isDemo){
+						$("#nextLevelButton").hide()
+					}
 				}else{
 					$("#gameOverScreen").html('<h1 class="menuTitle">You Lose!</h1> <button class="menuButton" onClick="startMenuMusic(); displayTitleScreen()">Main Menu</button> <button class="menuButton" onClick="level = '+level+'; levelPlan = LevelList[level]; Main()">Try Again</button>');
 				}
@@ -1327,7 +1326,10 @@
  				animateView();
 			}
 			$(document).ready(function(){
-  				canvasWidth = $("#canvas").width();
+				if(Cinematic){
+					document.getElementById("canvas").style.cursor = "none";
+				}
+ 				canvasWidth = $("#canvas").width();
 				canvasHeight = $("#canvas").height();
 				console.assert(canvasWidth > 0)
 				console.assert(canvasHeight > 0)
