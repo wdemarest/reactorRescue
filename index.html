@@ -132,6 +132,8 @@
 			let canvasWidth;
 			let canvasHeight;
 
+			let Cinematic = false;
+
 			let LevelList = MakeLevelList();
 
  			let level;
@@ -672,7 +674,7 @@
 				draw(context, camera){
 					let conditionMet = false;
 					if(this.condition == "power" && this.board.earthIsOn){conditionMet = true}
-					if(!this.condition || conditionMet){
+					if((!this.condition || conditionMet) && !Cinematic){
 						let drawX = this.x-(camera.x-canvasWidth/2);
 						let drawY = this.y-(camera.y-canvasHeight/2);
 						context.font = "30px Arial";
@@ -1040,7 +1042,7 @@
 					soundBank.load("warpOut","sound/warpOut.wav", 5);
 					soundBank.load("woosh","sound/sunDiscThrowerImpact.wav");
 					soundBank.loadLoop("repulse",{
-						src: "sound/repulse2.wav",
+						src: "sound/repulse.wav",
 						loop: true,
 						volume: Rules.volume*2,
 						sprite: {
