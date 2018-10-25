@@ -7,6 +7,37 @@ function EditLevel(sim, levelPlan, type, x, y){
 	}
 }
 function MakeLevelList(){
+
+	let backgroundUrlList = [
+		"images/background/tarantualNebulaBySuaviLipinski.jpg",
+		"images/background/planetAsteroidBelt1a.jpg",
+		"images/background/marsByKD.jpg",
+		"images/background/asteroidRingsByKD.jpg",
+		"images/background/planetMetalByKD.jpg",
+
+		"images/background/scorpioNebulaByWikimedia.jpg",
+		"images/background/prawnNebulaByLaSillaObservatory.jpg",
+		"images/background/carinaNebulaBySuaviLipinski.jpg",
+		"images/background/catsPawNebulaBySuaviLipinski.jpg",
+		"images/background/milkyWayByNasa.jpeg",
+		"images/background/milkyWayYellowBallsByNasaJPL.jpg",
+		"images/background/carinaNebula2ByWikimedia.jpg",
+		"images/background/starNurseryByWikimedia.jpg",
+	];
+/*
+		"images/background/",
+		"images/background/",
+		"images/background/",
+		"images/background/",
+		"images/background/",
+		"images/background/",
+	]
+*/
+	backgroundUrlList = [
+		"images/background/iceBelt.jpg"
+	];
+
+
 	let LevelList = [
 		{
 			pieceSource: [//Level Builder
@@ -587,6 +618,12 @@ function MakeLevelList(){
 			],
 		}
 	]
+
+//	for( let i=0 ; i<LevelList.length ; ++i ) {
+//		LevelList[i].backgroundUrl = backgroundUrlList[i%backgroundUrlList.length];
+//	}
+
+
 	return LevelList;
 }
 
