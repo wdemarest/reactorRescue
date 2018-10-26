@@ -232,6 +232,24 @@
 				}
 				return false;
 			}
+
+			function MakeStars() {
+				window.star = [];
+				let w = canvasWidth;
+				let h = canvasHeight;
+				for( let i=0 ; i<150 ; ++i ) {
+					let depth = 0.3+Math.random()*0.65;
+					window.star[i] = {
+						img: Img['star'+randInt(5)],
+						x: randInt(w*1.3/depth),
+						y: randInt(h*1.3/depth),
+						xSpan: (w+randInt(w*0.3)),
+						ySpan: (h+randInt(h*0.3)),
+						depth: depth
+					}
+				}
+			}
+
 			class Board{
 				constructor(size){
 					this.size = size;
@@ -1113,22 +1131,6 @@
 							this.drawImage(backgroundImg, 0, 0, canvas.width, canvas.height);
 						}
 
-						if( !window.star ) {
-							window.star = [];
-							let w = context.canvas.width;
-							let h = context.canvas.height;
-							for( let i=0 ; i<300 ; ++i ) {
-								let depth = 0.3+Math.random()*0.65;
-								window.star[i] = {
-									img: Img['star'+randInt(5)],
-									x: randInt(w*1.3/depth),
-									y: randInt(h*1.3/depth),
-									xSpan: (w+randInt(w*0.3)),
-									ySpan: (h+randInt(h*0.3)),
-									depth: depth
-								}
-							}
-						}
 						for( let i=0 ; i<window.star.length ; ++i ) {
 							let star = window.star[i];
 							let sx = ((star.x-sim.blower.x) * star.depth) % star.xSpan;
@@ -1295,12 +1297,12 @@
 
 				$("#menus").hide()
 				$("#canvas").show()
+				let levelPlan = LevelList[level];
 				let view = new View();
-				let board = new Board(Rules.boardSize);
+				let board = new Board(levelPlan.boardSize || Rules.boardSize);
 				let context = view.myCanvas('canvas', board);
 				let sim = new Sim(board);
 				initControls(sim);
-				let levelPlan = LevelList[level];
 				if( levelPlan.backgroundUrl ) {
 					levelPlan.backgroundImg = new Image();
 					levelPlan.backgroundImg.src = levelPlan.backgroundUrl;
@@ -1357,27 +1359,32 @@
 				}
  				animateView();
 			}
-			$(document).ready(function(){
-				if(Cinematic){
-					document.getElementById("canvas").style.cursor = "none";
-				}
+
+			function onResize() {
+				let canvasId = "canvas"
+				let canvas = document.getElementById(canvasId);
+				if( !canvas ) return;
+				let context = canvas.getContext('2d');
+				if( !context ) return;
+				context.canvas.width = window.innerWidth;
+				context.canvas.height = window.innerHeight;
  				canvasWidth = $("#canvas").width();
 				canvasHeight = $("#canvas").height();
 				console.assert(canvasWidth > 0)
 				console.assert(canvasHeight > 0)
+				MakeStars(context);
+			}
+
+			$(document).ready(function(){
+				if(Cinematic){
+					document.getElementById("canvas").style.cursor = "none";
+				}
 
 				let view = new View();
 				view.loadFiles(ImageURLs, Img, Main);
+				onResize();
 				
-				$(window).resize(function(){
-					let canvasId = "canvas"
-					let canvas = document.getElementById(canvasId);
-					let context = canvas.getContext('2d');
-					context.canvas.width = window.innerWidth;
-					context.canvas.height = window.innerHeight;
-	 				canvasWidth = $("#canvas").width();
-					canvasHeight = $("#canvas").height();
-				})
+				$(window).resize( onResize );
 			});
 			
 			//art by: eleksey goldis

@@ -36,7 +36,7 @@ function MakeLevelList(){
 	]
 */
 	backgroundUrlList = [
-		"images/background/iceBelt.jpg"
+		"images/background/milkyWayByNasa.jpg"
 	];
 
 
@@ -57,6 +57,7 @@ function MakeLevelList(){
 		},
 		{
 			isTutorial: true,
+			boardSize: 3000, 
 			pieceSource: [//Tutorial 1
 				{type: "blower", x: 0, y: -760},
 				{type: "gate", x: 920, y: 900},
@@ -70,7 +71,8 @@ function MakeLevelList(){
 				{type: "text", x: -300, y: 250, text: "Down again."},
 				{type: "text", x: -300, y: 600, text: "Try hitting escape on your keyboard."},
 				{type: "text", x: -300, y: 650, text: "Go to the right this time."},
-				{type: "text", x: 625, y: 600, text: "Great! Now use your repulser field to push the payload into the Gate."},
+				{type: "text", x: 625, y: 600, text: "Great! Now use your repulser field"},
+				{type: "text", x: 625, y: 640, text: "to push the payload into the Gate."},
 				{type: "text", x: 625, y: 810, text: "This is the payload."},
 				{type: "text", x: 625, y: 910, text: "This is the gate."},
 			],
