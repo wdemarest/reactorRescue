@@ -32,22 +32,22 @@ function MakeLevelList(){
 //		"images/background/machinePlanet.jpg"
 //	];
 
+	let EditorDefaultLevel = {
+		pieceSource: [//Level Builder
+			{type: "blower", x: 0, y: 0},
+			{type: "gate", x: -200, y: 0},
+			{type: "payload", x: 200, y: 0},
+
+			{type: "mine", x: 0, y: 200},
+
+			{type: "barricade", x: 50, y: -150},
+			{type: "barricade", x: 50, y: -250},
+			{type: "barricade", x: -50, y: -150},
+			{type: "barricade", x: -50, y: -250},
+		],
+	};
 
 	let LevelList = [
-		{
-			pieceSource: [//Level Builder
-				{type: "blower", x: 0, y: 0},
-				{type: "gate", x: -200, y: 0},
-				{type: "payload", x: 200, y: 0},
-
-				{type: "mine", x: 0, y: 200},
-
-				{type: "barricade", x: 50, y: -150},
-				{type: "barricade", x: 50, y: -250},
-				{type: "barricade", x: -50, y: -150},
-				{type: "barricade", x: -50, y: -250},
-			],
-		},
 		{
 			isTutorial: true,
 			boardSize: 3000, 

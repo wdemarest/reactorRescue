@@ -109,6 +109,16 @@
 				width: 60px;
 				text-align: center;
 			}
+			.levelDisable{
+				background-color: rgba(105,105,105,0.4);
+				color: rgb(150,150,150,0.6);
+				border: 1px solid rgb(150,150,150,0.6);
+			}
+			.levelDisable:hover{
+				margin-top: 2px;
+				margin-bottom: 2px;
+				border: 1px solid rgb(150,150,150,0.6);
+			}
 			.bigMenuButton{
 				font-size: 300%;
 			}
@@ -178,7 +188,7 @@
 				showLevelBuilder: false,
 				demoLevelLimit: 8,
 				zOrders: {text: -1, particle: 0, blower: 1, payload: 2, bullet: 3, mine: 4, destructible: 5, turret: 6, barricade: 7, gate: 8, receptical: 8}
-			}
+			};
 
 			let canvasWidth;
 			let canvasHeight;
@@ -186,12 +196,6 @@
 			let handleInterval;
 
 			let Cinematic = false;
-
-			let LevelList = MakeLevelList();
-
- 			let level;
-
- 			let levelPlan;
 
  			let debug = new Debug;
 
@@ -285,6 +289,83 @@
 					return true;
 				}
 				return false;
+			}
+
+
+			var Internet = function() {
+				var attempt = {};
+				var counter = 0;
+
+				function isEmpty(obj) {
+				    for(var prop in obj) {
+				        if(obj.hasOwnProperty(prop))
+				            return false;
+				    }
+				    return true;
+				}
+				
+				this.retry = function() {
+					for( var handle in attempt ) {
+						attempt[handle]();
+					}
+				}
+				function clear(handle) {
+					delete attempt[handle];
+					if( isEmpty(attempt) ) {
+						$('#internetDown').hide();
+					}
+				}
+				function error(j, textStatus, errorThrown) {
+					if( j.status == 0 ) {
+						$('#internetDown').show();
+					}
+					else {
+						alert(textStatus, errorThrown);
+					}
+				}
+				this.ajax = function(_spec,callback) {
+					var handle = counter++;
+					var spec = $.extend(true,{},_spec);
+					spec.timeout = 10*1000;
+					spec.success = function(data) {
+						clear(handle);
+						callback(data);
+					}
+					spec.error = error;
+					attempt[handle] = function() {
+						$.ajax(spec);
+					}
+					attempt[handle]();
+					return handle;
+				}
+
+				return this;
+			}
+
+			let internet = new Internet();
+			let LevelList = MakeLevelList();
+ 			let level;
+ 			let levelPlan;
+
+			let progressGet = function(callback) {
+				internet.ajax({
+					url: '/progressRr',
+					method: 'GET',
+					contentType:"application/json; charset=utf-8",
+					data: {},
+				}, callback );
+			}
+
+			let progressSave = function(levelNumber,time,callback) {
+				internet.ajax({
+					url: '/progressRr',
+					method: 'POST',
+					contentType:"application/json; charset=utf-8",
+					data: JSON.stringify({
+					    level: levelNumber,
+					    time: time
+					})
+				}, callback);
 			}
 
 			function MakeStars() {
@@ -1160,8 +1241,7 @@
 						if( imagesLoaded >= imagesRequested ) {
 							console.assert(imagesLoaded == imagesRequested)
 							clearInterval(handle);
-							startMenuMusic()
-							displayTitleScreen();
+							callbackFn();
 						}
 					},1)
 				}
@@ -1253,16 +1333,21 @@
 				$("#menus").show()
 				$("#titleScreen").show()
 			}
-			function displayLevelSelect(){
+			function displayLevelSelect(progress){
 				$("#gameOverScreen").hide()
 				$("#titleScreen").hide()
 				$("#levelSelect").show()
 				$("#levelRoster").empty();
-				for (let i = 1; i < LevelList.length; i++) {
+
+				for (let i = 0; i < LevelList.length; i++) {
 					if(i <= Rules.demoLevelLimit || !Rules.isDemo){
-						$("#levelRoster").append('<button class="menuButton levelButton" onClick="level = '+i+'; levelPlan = LevelList[level]; startGameMusic(); Main()">'+i+'</button>');
+						let levelDisable = (i>0 && progress[i] === undefined);
+						let cls 	= levelDisable ? ' levelDisable' : '';
+						let action 	= levelDisable ? '' : 'onClick="startGameMusic(); GameStart('+i+');"';
+						$("#levelRoster").append(
+							'<button class="menuButton levelButton '+cls+'" '+action+'>'+(i+1)+'</button>');
 					}
-					if(i%10 == 0){
+					if((i+1)%10 == 0){
 						$("#levelRoster").append('<br>');
 					}
 				}
@@ -1282,25 +1367,28 @@
 				});
 				$('.buttonPlayAgain').on( 'click.gameOver', null, () => {
 					GameClear();
-					levelPlan = LevelList[level];
-					Main();
+					GameStart(level)
 				});
 				$('.buttonNextLevel').on( 'click.gameOver', null, () => {
 					GameClear();
-					level += 1;
-					console.log("Level is now "+level );
-					levelPlan = LevelList[level];
-					Main();
+					GameStart(level+1);
 				});
 
 				if(win){
-					$('#gameSummaryWin').html('Level '+level+' completed in '+time+' seconds!');
+
+					$('#gameSummaryWin').html('Level '+(level+1)+' completed in '+time+' seconds!');
 					$('#gameWin').show();
+					$('#gameWin button').hide();
+					$('#gameSaving').show();
+					progressSave( level, elapsedTime, function() {
+						$('#gameSaving').hide();
+						$('#gameWin button').show();
+					});
 					if(level >= Rules.demoLevelLimit && Rules.isDemo){
 						$("#buttonNextLevel").hide()
 					}
 				}else{
-					$('#gameSummaryLose').html('Level '+level+' failed!');
+					$('#gameSummaryLose').html('Level '+(level+1)+' failed!');
 					$('#gameLose').show();
 				}
 				$("#pauseMenu").hide()
@@ -1337,12 +1425,11 @@
 					()=>{
 						GameOver();
 						GameClear();
-						levelPlan = LevelList[level];
-						Main();
+						GameStart(level);
 					}
 				)
 				let time = Math.floor(elapsedTime*10)/10; //this is to get just 1 decimal point of detail.
-				$("#pauseMenuText").html('Level '+level+' paused.<br />Current time: '+time+' seconds!')
+				$("#pauseMenuText").html('Level '+(level+1)+' paused.<br />Current time: '+time+' seconds!')
 				$("#gameOverScreen").hide();
 				$("#pauseMenu").show();
 				$("#overlayMenu").show()
@@ -1353,7 +1440,23 @@
 				$("#overlayMenu").hide()
 			}
 
- 			function Main(){
+			let timeFail = 9999;
+
+			function GameStart(forceLevel) {
+				progressGet( function(progress) {
+					debugger;
+					var i = 0;
+					while(progress[i] && progress[i].time < timeFail && i < LevelList.length-1){
+						i ++;
+					}
+					if( forceLevel !== undefined && forceLevel !== null ) {
+						i = forceLevel;
+					}
+					GameMain(i);
+				});
+			}
+
+ 			function GameMain(newLevel){
  				soundBank.play("warpIn")
 				UnpauseGame()
 				//level = prompt("Which level would you like to play?");
@@ -1364,7 +1467,8 @@
 
 				$("#menus").hide()
 				$("#canvas").show()
-				let levelPlan = LevelList[level];
+				level = newLevel;
+				levelPlan = LevelList[level];
 				let view = new View();
 				let board = new Board(levelPlan.boardSize || Rules.boardSize);
 				let context = view.myCanvas('canvas', board);
@@ -1463,7 +1567,14 @@
 				}
 
 				let view = new View();
-				view.loadFiles(ImageURLs, Img, Main);
+				$('#loading').show();
+				$('#titleButtons').hide();
+				view.loadFiles(ImageURLs, Img, function() {
+					$('#loading').hide();
+					$('#titleButtons').show();
+					startMenuMusic()
+					displayTitleScreen();
+				});
 				onResize();
 				
 				$(window).resize( onResize );
@@ -1484,17 +1595,20 @@
 					Reactor Rescue
 				</h1>
 				<div class='spacer2x'></div>
-				<button class="bigMenuButton" onClick="level = 1; levelPlan = LevelList[level]; startGameMusic(); Main()">
-					Play
-				</button>
-				<div class='spacer2x'></div>
-				<button class="menuButton" onClick="displayBrief()">
-					Briefing
-				</button>
-				<div class='spacer'></div>
-				<button class="menuButton" onClick="displayLevelSelect()">
-					Level Select
-				</button>
+				<div id="loading">Loading...</div>
+				<div id="titleButtons">
+					<button class="bigMenuButton" onClick="startGameMusic(); GameStart();">
+						Play
+					</button>
+					<div class='spacer2x'></div>
+					<button class="menuButton" onClick="displayBrief()">
+						Briefing
+					</button>
+					<div class='spacer'></div>
+					<button class="menuButton" onClick="progressGet(displayLevelSelect);">
+						Level Select
+					</button>
+				</div>
 			</div>
 			<div id="brief" class="menu hide">
 				<h1 class="menuTitle">
@@ -1529,7 +1643,7 @@
 				<div id="levelRoster">
 				</div>
 				<div class="spacer"></div>
-				<button id="levelBuilder" class="menuButton" onClick="level = 0; levelPlan = LevelList[0]; Main()">Level Builder</button>
+				<button id="levelBuilder" class="menuButton" onClick="StartEditor();">Level Builder</button>
 				<div class="spacer"></div>
 				<button class="menuButton" onClick="displayTitleScreen()">Back</button>
 			</div>
@@ -1560,6 +1674,9 @@
 						<div class="spacer"></div>
 						<div id="gameSummaryWin" class="menuText ctr"></div>
 						<div class="spacer"></div>
+						<div id='gameSaving' class="ctr">
+							Saving...
+						</div>
 						<div class="ctr">
 							<button class="buttonMainMenu menuButton">Main Menu</button>
 							<button class="buttonPlayAgain menuButton">Play Again</button>
