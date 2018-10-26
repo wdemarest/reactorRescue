@@ -612,6 +612,15 @@ function MakeLevelList(){
 				{type: "text", x: -265, y: 50, text: "You have restored power to the earth.", condition: "power"},
 				{type: "text", x: -175, y: 80, text: "Humanity is in your debt.", condition: "power"},
 				{type: "text", x: -75, y: 115, text: "Thank you.", condition: "power"},
+
+				{type: "text", x: -75, y: 650, text: "CREDITS", condition: "power"},
+				{type: "text", x: -300, y: 700, text: "Producer: Will Demarest", condition: "power"},
+				{type: "text", x: -300, y: 750, text: "Game Designers: Will Demarest, Ken Demarest", condition: "power"},
+				{type: "text", x: -300, y: 800, text: "Programmers: Will Demarest", condition: "power"},
+				{type: "text", x: -300, y: 850, text: "Sound Designers: Will Demarest, Ken Demarest", condition: "power"},
+				{type: "text", x: -300, y: 900, text: "Artists: Aleksey Goldis, Will Demarest, Ken Demarest", condition: "power"},
+				{type: "text", x: -150, y: 975, text: "Thank You for Playing.", condition: "power"},
+				//{type: "text", x: -300, y: 950, text: "Press esc to leave the game.", condition: "power"},
 			],
 		}
 	]

@@ -530,7 +530,7 @@
 
 						this.applyFriction(dt)
 
-						if( !this.sim.board.contains(this.x,this.y) ) {
+						if( !this.sim.board.contains(this.x,this.y) && !this.surviveOutOfBounds) {
 							this.dead = true;
 						}
 
@@ -766,6 +766,7 @@
 					this.blowable = false;
 					this.effect = {type: "none"};
 					this.collider = false;
+					this.surviveOutOfBounds = true;
 
 					this.control = control;
 					this.angle = (Math.random()*Math.PI*2)-Math.PI;
@@ -787,13 +788,13 @@
 					if(wDown){
 						this.y -= this.speed*dt*Rules.gameSpeed;
 					}
-					if(sDown){
+					if(sDown || this.credits){
 						this.y += this.speed*dt*Rules.gameSpeed;
 					}
-					if(aDown){
+					if(aDown || (this.credits && this.x > 0)){
 						this.x -= this.speed*dt*Rules.gameSpeed;
 					}
-					if(dDown){
+					if(dDown || (this.credits && this.x < 0)){
 						this.x += this.speed*dt*Rules.gameSpeed;
 					}
 					[this.x,this.y] = this.sim.board.clamp(this.x,this.y);
@@ -1465,7 +1466,6 @@
 				$(window).resize( onResize );
 			});
 			
-			//art by: eleksey goldis
 	</script>
   </body>
 </html>		
