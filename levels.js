@@ -10,22 +10,29 @@ function MakeLevelList(){
 
 	let backgroundUrlList = [
 		"images/background/marsByKD.jpg",
-		"images/background/asteroidRingsByKD.jpg",
-		"images/background/planetMetalByKD.jpg",
-		"images/background/iceBelt.jpg",
-		"images/background/milkyWayByNasa.jpg",
-		"images/background/planetEyeByKD.jpg",
-		"images/background/asteroidField.jpg",
+		//Machine Planet
 		"images/background/planetCracked.jpg",
-		"images/background/planetGreen.jpg",
-		"images/background/marbleGalaxy.jpg",
-		"images/background/jupiterAndMoon.jpg",
-		"images/background/lavaWorld.jpg",
-		"images/background/planetLava2Dim.jpg",
+		"images/background/planetMetalByKD.jpg",
+		"images/background/machinePlanet.jpg",
+		//Lava
 		"images/background/planetRingByKD.jpg",
+		"images/background/planetLava2Dim.jpg",
+		"images/background/lavaWorld.jpg",
 		"images/background/lavaRinged.jpg",
+		//Green
+		"images/background/planetGreen.jpg",
+		//Eye
+		"images/background/planetEyeByKD.jpg",
+		//Deep Space
+		"images/background/milkyWayByNasa.jpg",
+		"images/background/asteroidField.jpg",
+		//Sol
 		"images/background/planetStriped.jpg",
-		"images/background/machinePlanet.jpg"
+		"images/background/jupiterAndMoon.jpg",
+		//Earth
+		"images/background/marbleGalaxy.jpg",
+		"images/background/asteroidRingsByKD.jpg",
+		"images/background/iceBelt.jpg",
 	];
 
 //	backgroundUrlList = [

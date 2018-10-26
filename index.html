@@ -681,20 +681,45 @@
 					this.effect = {type: "none"};
 					this.health = 10;
 					this.warpParticleCount = 0;
+					this.warpPhase = 0;
+					this.warpDuration = 2;
 				}
 				particleTick(dt){
-					if(this.warping){
+					if(this.warpPhase < this.warpDuration){
+						this.warpPhase += dt;
 						this.xVel = 0;
 						this.yVel = 0;
-						this.warpParticleCount += 15;
+						if(this.warpPhase > 0.5*this.warpDuration){
+							this.warpParticleCount = this.warpPhase*15;
+						}else{
+							this.warpParticleCount = (this.warpDuration-this.warpPhase*2)*15;
+						}
+						this.warping = true;
+					}else{
+						this.warping = false;
 					}
+
 					for (var i = 0; i < dt*this.warpParticleCount*Rules.gameSpeed; i++) {
-						new Trail(this.sim, this.x+((Math.random()-0.5)*40), this.y+((Math.random()-0.5)*40), 0, 0, 0)
+						//new Trail(this.sim, this.x+((Math.random()-0.5)*40), this.y+((Math.random()-0.5)*40), 0, 0, 0)
 					}
+
 					for (var i = 0; i < dt*10*Rules.gameSpeed; i++) {
 						if(Math.random()>0.95){
 							new Electricity(this.sim, this.x+((Math.random()-0.5)*20), this.y+((Math.random()-0.5)*20), 0, 0, 0)
 						}
+					}
+				}
+				draw(context, camera){
+					let pieceSpec = {
+						x: this.x,
+						y: this.y,
+						width: this.width,
+						height: this.height,
+						xAnchor: 0.5,
+						yAnchor: 0.5
+					};
+					if(true/*this.warpPhase > 0.5*this.warpDuration*/){
+						context.draw(pieceSpec, Img[this.type], camera)
 					}
 				}
 			}
@@ -1179,7 +1204,7 @@
 			}
  			//VIEW
  			let ImageURLs = {
-				blower: 'images/mover2.png',
+				blower: 'images/mover.png',
 				payload: 'images/payload.png',
 				gate: 'images/gate.png',
 				receptical: 'images/receptical.png',
