@@ -9,15 +9,12 @@ function EditLevel(sim, levelPlan, type, x, y){
 function MakeLevelList(){
 
 	let backgroundUrlList = [
-		"images/background/planetAsteroidBelt1a.jpg",
 		"images/background/marsByKD.jpg",
 		"images/background/asteroidRingsByKD.jpg",
 		"images/background/planetMetalByKD.jpg",
 		"images/background/iceBelt.jpg",
-		"images/background/starsByKD.jpg",
 		"images/background/milkyWayByNasa.jpg",
 		"images/background/planetEyeByKD.jpg",
-		"images/background/planetRingByKD.jpg",
 		"images/background/asteroidField.jpg",
 		"images/background/planetCracked.jpg",
 		"images/background/planetGreen.jpg",
@@ -25,6 +22,7 @@ function MakeLevelList(){
 		"images/background/jupiterAndMoon.jpg",
 		"images/background/lavaWorld.jpg",
 		"images/background/planetLava2Dim.jpg",
+		"images/background/planetRingByKD.jpg",
 		"images/background/lavaRinged.jpg",
 		"images/background/planetStriped.jpg",
 		"images/background/machinePlanet.jpg"
