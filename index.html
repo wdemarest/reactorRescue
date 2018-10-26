@@ -590,7 +590,7 @@
 					context.draw(pieceSpec, Img[this.type], camera)
 				}
 				onTouch(effect){
-					if(effect.type == "damage"){
+					if(effect.type == "damage" && !this.warping ){
 						this.health -= effect.amount;
 					}
 					if(effect.type == "win" && this.type == "payload" && !this.warping){
@@ -851,8 +851,8 @@
 					debug.expectNum(xVel, "xVel")
 					debug.expectNum(yVel, "yVel")
 					this.mass = 25;
-					this.width = 30;
-					this.height = 30;
+					this.width = 26;
+					this.height = 26;
 					this.xVel = xVel;
 					this.yVel = yVel;
 					this.hitBoxRadius = 15;
