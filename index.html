@@ -536,6 +536,9 @@
 
 						if(this.health <= 0 && !this.warping){
 							this.dead = true;
+						}
+
+						if( this.dead ) {
 							if(this.type == "payload" ){
 								soundBank.play("explosionBig");
 								let temp = this;
