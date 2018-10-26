@@ -185,6 +185,8 @@
 				volume: 0.1,
 				musicVolume: 0.03,
 				isDemo: false,
+				isCinematic: false,
+				isEditor: false,
 				showLevelBuilder: false,
 				demoLevelLimit: 8,
 				zOrders: {text: -1, particle: 0, blower: 1, payload: 2, bullet: 3, mine: 4, destructible: 5, turret: 6, barricade: 7, gate: 8, receptical: 8}
@@ -194,8 +196,6 @@
 			let canvasHeight;
 			let handleView;
 			let handleInterval;
-
-			let Cinematic = false;
 
  			let debug = new Debug;
 
@@ -856,7 +856,7 @@
 					if(this.condition == "power" && this.sim.board.earthIsOn){
 						conditionMet = true;
 					}
-					if((!this.condition || conditionMet) && !Cinematic){
+					if((!this.condition || conditionMet) && !Rules.isCinematic){
 						let drawX = this.x-(camera.x-canvasWidth/2);
 						let drawY = this.y-(camera.y-canvasHeight/2);
 						context.font = "30px Arial";
@@ -1130,7 +1130,7 @@
 							console.log("unpause")
 						}
 					}
-					if(level == 0){
+					if(Rules.isEditor){
 						if(event.key == "0"){
 							EditLevel(sim, levelPlan, "deletePiece")
 						}
@@ -1469,7 +1469,6 @@
 
 			function GameStart(forceLevel) {
 				progressGet( function(progress) {
-					debugger;
 					var i = 0;
 					while(progress[i] && progress[i].time < timeFail && i < LevelList.length-1){
 						i ++;
@@ -1587,7 +1586,7 @@
 			}
 
 			$(document).ready(function(){
-				if(Cinematic){
+				if(Rules.isCinematic){
 					document.getElementById("canvas").style.cursor = "none";
 				}
 
