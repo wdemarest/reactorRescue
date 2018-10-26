@@ -136,6 +136,16 @@
 				padding: 0px;
 				height: 48px;
 			}
+			#demoNote {
+				position: absolute;
+				top: 0px;
+				width:100%;
+			}
+			#demoNote div {
+				background-color: black;
+				color: gray;
+				float: right;
+			}
 			@media (max-width: 1336px) {
 				.menuTitle {
 					font-size: 300%;
@@ -184,7 +194,7 @@
 				gameSpeed: 0,
 				volume: 0.1,
 				musicVolume: 0.03,
-				isDemo: false,
+				isDemo: true,
 				showLevelBuilder: false,
 				demoLevelLimit: 8,
 				zOrders: {text: -1, particle: 0, blower: 1, payload: 2, bullet: 3, mine: 4, destructible: 5, turret: 6, barricade: 7, gate: 8, receptical: 8}
@@ -346,8 +356,18 @@
 			let LevelList = MakeLevelList();
  			let level;
  			let levelPlan;
+ 			let demoProgress = [];
+ 			for( let i=0 ; i<Rules.demoLevelLimit ; ++i ) {
+ 				demoProgress[i] = { time: 100 };
+ 			}
 
 			let progressGet = function(callback) {
+				if( Rules.isDemo ) {
+					setTimeout( function() { 
+						callback(demoProgress);
+					}, 1 );
+					return;
+				}
 				internet.ajax({
 					url: '/progressRr',
 					method: 'GET',
@@ -357,6 +377,14 @@
 			}
 
 			let progressSave = function(levelNumber,time,callback) {
+				if( Rules.isDemo ) {
+					setTimeout( function() {
+						demoProgress[levelNumber] = { time: time };
+						callback( { result: 'success' } );
+					}, 1 );
+					return;
+				}
+
 				internet.ajax({
 					url: '/progressRr',
 					method: 'POST',
@@ -1340,13 +1368,12 @@
 				$("#levelRoster").empty();
 
 				for (let i = 0; i < LevelList.length; i++) {
-					if(i <= Rules.demoLevelLimit || !Rules.isDemo){
-						let levelDisable = (i>0 && progress[i] === undefined);
-						let cls 	= levelDisable ? ' levelDisable' : '';
-						let action 	= levelDisable ? '' : 'onClick="startGameMusic(); GameStart('+i+');"';
-						$("#levelRoster").append(
-							'<button class="menuButton levelButton '+cls+'" '+action+'>'+(i+1)+'</button>');
-					}
+					let levelDisable = (i>0 && progress[i] === undefined);
+					let cls 	= levelDisable ? ' levelDisable' : '';
+					let action 	= levelDisable ? '' : 'onClick="startGameMusic(); GameStart('+i+');"';
+					$("#levelRoster").append(
+						'<button class="menuButton levelButton '+cls+'" '+action+'>'+(i+1)+'</button>'
+					);
 					if((i+1)%10 == 0){
 						$("#levelRoster").append('<br>');
 					}
@@ -1383,10 +1410,9 @@
 					progressSave( level, elapsedTime, function() {
 						$('#gameSaving').hide();
 						$('#gameWin button').show();
+						let showNextLevel = (!Rules.isDemo || level+1 < Rules.demoLevelLimit);
+						$(".buttonNextLevel").toggle(showNextLevel);
 					});
-					if(level >= Rules.demoLevelLimit && Rules.isDemo){
-						$("#buttonNextLevel").hide()
-					}
 				}else{
 					$('#gameSummaryLose').html('Level '+(level+1)+' failed!');
 					$('#gameLose').show();
@@ -1444,7 +1470,6 @@
 
 			function GameStart(forceLevel) {
 				progressGet( function(progress) {
-					debugger;
 					var i = 0;
 					while(progress[i] && progress[i].time < timeFail && i < LevelList.length-1){
 						i ++;
@@ -1578,6 +1603,9 @@
 				onResize();
 				
 				$(window).resize( onResize );
+				setInterval( function() {
+					$('#demoNote').toggle(Rules.isDemo);
+				}, 5*1000);
 			});
 			
 	</script>
@@ -1586,6 +1614,7 @@
 		</script>
 	</head>
 	<body>
+		<div id="demoNote" class="hide"><div>DEMO</div></div>
 		<div id="menus" class="ctr">
 			<div id="menuBg">
 				<img src='images/monitor.jpg'>
