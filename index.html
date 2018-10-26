@@ -452,7 +452,7 @@
 
 						this.applyFriction(dt)
 
-						if( !this.board.contains(this.x,this.y) ) {
+						if( !this.board.contains(this.x,this.y) && this.type != "board") {
 							this.dead = true;
 						}
 
@@ -660,7 +660,9 @@
 				}
 				draw(context, camera){
 					let conditionMet = false;
-					if(this.condition == "power" && this.board.earthIsOn){conditionMet = true}
+					if(this.condition == "power" && this.board.earthIsOn){
+						conditionMet = true
+					}
 					if((!this.condition || conditionMet) && !Cinematic){
 						let drawX = this.x-(camera.x-canvasWidth/2);
 						let drawY = this.y-(camera.y-canvasHeight/2);
@@ -703,13 +705,13 @@
 					if(wDown){
 						this.y -= this.speed*dt*Rules.gameSpeed;
 					}
-					if(sDown){
+					if(sDown || this.credits){
 						this.y += this.speed*dt*Rules.gameSpeed;
 					}
-					if(aDown){
+					if(aDown || (this.credits && this.x > 0)){
 						this.x -= this.speed*dt*Rules.gameSpeed;
 					}
-					if(dDown){
+					if(dDown || (this.credits && this.x < 0)){
 						this.x += this.speed*dt*Rules.gameSpeed;
 					}
 					[this.x,this.y] = this.board.clamp(this.x,this.y);
@@ -1346,7 +1348,6 @@
 				})
 			});
 			
-			//art by: eleksey goldis
 	</script>
   </body>
 </html>		
