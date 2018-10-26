@@ -98,7 +98,7 @@
 	   			height: 50px;
 			}
 		</style>
-		<title> Blower Game </title>
+		<title>Reactor Rescue</title>
 		<script
 			src="https://code.jquery.com/jquery-3.3.1.js"
 			integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60="
@@ -193,13 +193,17 @@
 				return rad;
 			}
 			*/
+			function randInt(max) {
+				return Math.floor(Math.random()*max);
+			}
+
 			function calcDist(x1, y1, x2, y2){
 				let dx = (x1-x2);
 				let dy = (y1-y2);
 				return Math.abs(Math.sqrt(Math.pow(dx, 2)+Math.pow(dy, 2)))
 			}
 			function pickRandom(list){
-				let seed = Math.floor(Math.random()*list.length);
+				let seed = randInt(list.length);
 				return list[seed]
 			}
 			function calcAngle(x1, y1, x2, y2){
@@ -999,6 +1003,11 @@
 				electricity: 'images/particles/lightning.png',
 				portalEnergy: 'images/particles/trail.png',
 				explosion: 'images/explosion.png',
+				star0: 'images/star0.png',
+				star1: 'images/star1.png',
+				star2: 'images/star2.png',
+				star3: 'images/star3.png',
+				star4: 'images/star4.png',
 				//minimapBackground: 'images/minimapBackground.jpg',
 			};
  			let Img = {};
@@ -1106,6 +1115,30 @@
 							let backgroundImg = Img[backgroundName];
 							this.drawImage(backgroundImg, 0, 0, canvas.width, canvas.height);
 						}
+
+						if( !window.star ) {
+							window.star = [];
+							let w = context.canvas.width;
+							let h = context.canvas.height;
+							for( let i=0 ; i<300 ; ++i ) {
+								let depth = 0.3+Math.random()*0.65;
+								window.star[i] = {
+									img: Img['star'+randInt(5)],
+									x: randInt(w*1.3/depth),
+									y: randInt(h*1.3/depth),
+									xSpan: (w+randInt(w*0.3)),
+									ySpan: (h+randInt(h*0.3)),
+									depth: depth
+								}
+							}
+						}
+						for( let i=0 ; i<window.star.length ; ++i ) {
+							let star = window.star[i];
+							let sx = ((star.x-sim.blower.x) * star.depth) % star.xSpan;
+							let sy = ((star.y-sim.blower.y) * star.depth) % star.ySpan;
+							this.drawImage(star.img,sx,sy,star.img.width,star.img.height);
+						}
+					
 					}.bind(context)
 					/*context.clearMinimap = function(spec, imageObj){
 						this.drawImage(Img.background, 0, 0, 280, 260);

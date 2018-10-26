@@ -14,6 +14,8 @@ function MakeLevelList(){
 		"images/background/marsByKD.jpg",
 		"images/background/asteroidRingsByKD.jpg",
 		"images/background/planetMetalByKD.jpg",
+		"images/background/iceBelt.jpg",
+		"images/background/starsByKD.jpg",
 
 		"images/background/scorpioNebulaByWikimedia.jpg",
 		"images/background/prawnNebulaByLaSillaObservatory.jpg",
@@ -619,9 +621,9 @@ function MakeLevelList(){
 		}
 	]
 
-//	for( let i=0 ; i<LevelList.length ; ++i ) {
-//		LevelList[i].backgroundUrl = backgroundUrlList[i%backgroundUrlList.length];
-//	}
+	for( let i=0 ; i<LevelList.length ; ++i ) {
+		LevelList[i].backgroundUrl = backgroundUrlList[i%backgroundUrlList.length];
+	}
 
 
 	return LevelList;
