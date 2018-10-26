@@ -9,35 +9,30 @@ function EditLevel(sim, levelPlan, type, x, y){
 function MakeLevelList(){
 
 	let backgroundUrlList = [
-		"images/background/tarantualNebulaBySuaviLipinski.jpg",
 		"images/background/planetAsteroidBelt1a.jpg",
 		"images/background/marsByKD.jpg",
 		"images/background/asteroidRingsByKD.jpg",
 		"images/background/planetMetalByKD.jpg",
 		"images/background/iceBelt.jpg",
 		"images/background/starsByKD.jpg",
+		"images/background/milkyWayByNasa.jpg",
+		"images/background/planetEyeByKD.jpg",
+		"images/background/planetRingByKD.jpg",
+		"images/background/asteroidField.jpg",
+		"images/background/planetCracked.jpg",
+		"images/background/planetGreen.jpg",
+		"images/background/marbleGalaxy.jpg",
+		"images/background/jupiterAndMoon.jpg",
+		"images/background/lavaWorld.jpg",
+		"images/background/planetLava2Dim.jpg",
+		"images/background/lavaRinged.jpg",
+		"images/background/planetStriped.jpg",
+		"images/background/machinePlanet.jpg"
+	];
 
-		"images/background/scorpioNebulaByWikimedia.jpg",
-		"images/background/prawnNebulaByLaSillaObservatory.jpg",
-		"images/background/carinaNebulaBySuaviLipinski.jpg",
-		"images/background/catsPawNebulaBySuaviLipinski.jpg",
-		"images/background/milkyWayByNasa.jpeg",
-		"images/background/milkyWayYellowBallsByNasaJPL.jpg",
-		"images/background/carinaNebula2ByWikimedia.jpg",
-		"images/background/starNurseryByWikimedia.jpg",
-	];
-/*
-		"images/background/",
-		"images/background/",
-		"images/background/",
-		"images/background/",
-		"images/background/",
-		"images/background/",
-	]
-*/
-	backgroundUrlList = [
-		"images/background/milkyWayByNasa.jpg"
-	];
+//	backgroundUrlList = [
+//		"images/background/machinePlanet.jpg"
+//	];
 
 
 	let LevelList = [
@@ -624,7 +619,9 @@ function MakeLevelList(){
 	]
 
 	for( let i=0 ; i<LevelList.length ; ++i ) {
-		LevelList[i].backgroundUrl = backgroundUrlList[i%backgroundUrlList.length];
+		if( !LevelList[i].background ) {
+			LevelList[i].backgroundUrl = backgroundUrlList[i%backgroundUrlList.length];
+		}
 	}
 
 

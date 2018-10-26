@@ -130,6 +130,7 @@
 
 			let canvasWidth;
 			let canvasHeight;
+			let handleView;
 
 			let Cinematic = false;
 
@@ -948,7 +949,7 @@
 					}
 					if(event.key == "Escape"){
 						if(Rules.gameSpeed){
-							PauseGame(handleView)
+							PauseGame()
 							console.log("pause")
 						}else{
 							UnpauseGame()
@@ -1236,6 +1237,7 @@
 				$("#levelSelect").append('<br> </br> <button class="menuButton" onClick="level = 0; levelPlan = LevelList[0]; Main()">Level Builder</button> <br> </br> <button class="menuButton" onClick="displayTitleScreen()">Back</button>');
 			}
 			function displayGameOverScreen(win, startTime){
+				debug.assert(!handleView);
 				$("#canvas").hide()
 				$("#levelSelect").hide()
 				$("#menus").show()
@@ -1255,10 +1257,13 @@
 				$("#titleScreen").hide()
 				$("#brief").show()
 			}
- 			function GameOver(handleView){
+ 			function GameOver(){
+				debug.assert(handleView);
  				soundBank.stop("repulse");
  				$(document).off(".controls")
+ 				window.animateView = false;
  				cancelAnimationFrame(handleView)
+ 				handleView = null;
 			}
 			function startGameMusic(){
 				soundBank.stopAll();
@@ -1272,7 +1277,7 @@
 				Rules.gameSpeed = 0;
 				$("#restartLevelButton").click(
 					()=>{
-						GameOver(handleView);
+						GameOver();
 						levelPlan = LevelList[level];
 						Main();
 					}
@@ -1284,7 +1289,6 @@
 				$("#pauseMenuOuter").hide()
 			}
 
-			let handleView;
  			function Main(){
  				soundBank.play("warpIn")
  				let startTime = Date.now();
@@ -1313,7 +1317,7 @@
 					if( !sim.gameFailLatch && !sim.payload){
 						sim.gameFailLatch = true;
 						setTimeout(() => {
-							GameOver(handleView)
+							GameOver()
 							displayGameOverScreen(false)
 						},2000)
 					}
@@ -1344,19 +1348,23 @@
 
 				$("#titleScreen").hide()
 
+				let avLatch = false;
 				function animateView(){
 					tickView()
-					handleView = requestAnimationFrame( animateView );
-					if(tickSim() == "next level"){
+					if(tickSim() == "next level" && !avLatch ){
+						avLatch = true;
 						setTimeout(
 							()=>{
 								soundBank.play("woosh")
-								GameOver(handleView)
+								GameOver()
 								displayGameOverScreen(true, startTime)
 							}, 4000
 						)
 					}
+					handleView = requestAnimationFrame( animateView );
 				}
+				debug.assert( !window.animateView );
+				window.animateView = true;
  				animateView();
 			}
 
@@ -1457,7 +1465,7 @@
 						<button class="menuButton" id="restartLevelButton">
 							Restart Level
 						</button>
-						<button class="menuButton" onclick="GameOver(); displayGameOverScreen(true, 0); startMenuMusic(); displayTitleScreen()">
+						<button class="menuButton" onclick="GameOver(); displayGameOverScreen(true, 0); startMenuMusic(); displayTitleScreen();">
 							Main Menu
 						</button>
 					</div>
