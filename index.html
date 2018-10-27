@@ -1201,8 +1201,11 @@
 					blower.setTarget(mouseX, mouseY)
 				});
 				$( document ).on("mousedown.controls", null,function( event ) {
-					soundBank.playLoop("repulse");
-					blower.blowing = true;
+					if( event.which == 1 ) { // left click
+						soundBank.stop("repulse");
+						soundBank.playLoop("repulse");
+						blower.blowing = true;
+					}
 				});
 				$( document ).on("mouseup.controls", null, function( event ) {
 					soundBank.stop("repulse");
