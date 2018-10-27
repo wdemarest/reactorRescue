@@ -1582,13 +1582,12 @@
 			}
 			function PauseGame(elapsedTime){
 				Rules.gameSpeed = 0;
-				$("#restartLevelButton").click(
-					()=>{
-						GameOver();
-						GameClear();
-						GameStart(level);
-					}
-				)
+				$("#restartLevelButton").off( '.restartLevel' );
+				$("#restartLevelButton").on( 'click.restartLevel', null, ()=>{
+					GameOver();
+					GameClear();
+					GameStart(level);
+				});
 				$("#pauseMenuText").html(
 					'Level '+(level+1)+' paused.<br />'+
 					'<div class="spacer"></div>'+
@@ -1697,7 +1696,6 @@
 					//console.log('animView request');
 					animDone = true;
 				}
-				debug.assert( !window.animateView );
 				window.animateView = true;
 				//console.log('animView start');
  				animateView();
