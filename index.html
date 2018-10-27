@@ -204,11 +204,11 @@
 				gameSpeed: 0,
 				volume: 0.1,
 				musicVolume: 0.03,
-				isDemo: false,
+				isDemo: window.location.href.indexOf('demo')>=0,
 				isCinematic: false,
 				isEditor: false,
 				showLevelBuilder: false,
-				demoLevelLimit: 8,
+				demoLevelLimit: 9,
 				zOrders: {text: -1, particle: 0, blower: 1, payload: 2, bullet: 3, mine: 4, destructible: 5, turret: 6, barricade: 7, gate: 8, receptical: 8}
 			};
 
@@ -1212,6 +1212,8 @@
 					blower.blowing = false;
 				});
 				$( document ).on("keydown.controls", null, function( event ) {
+					if( event.key == 'D' ) {
+					}
 					if(event.key == "w" || event.key == "W"){
 						wDown = true;
 					}
