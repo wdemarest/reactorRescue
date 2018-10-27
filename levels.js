@@ -27,7 +27,7 @@ function MakeLevelList(){
 		//Deep Space
 		"images/background/milkyWayByNasa.jpg",
 		"images/background/asteroidField.jpg",
-		"images/background/planetAsteroidBelt2.jpg",
+		"images/background/planetAsteroidBelt2a.jpg",
 		//Sol
 		"images/background/planetStriped.jpg",
 		"images/background/jupiterAndMoon.jpg",

@@ -386,18 +386,31 @@
  			}
 
 			let progressGet = function(callback) {
-				if( Rules.isDemo ) {
-					setTimeout( function() { 
-						callback(demoProgress);
-					}, 1 );
-					return;
+
+				function fetch(callback) {
+					if( Rules.isDemo ) {
+						setTimeout( function() { 
+							callback(demoProgress);
+						}, 1 );
+						return;
+					}
+					internet.ajax({
+						url: '/progressRr',
+						method: 'GET',
+						contentType:"application/json; charset=utf-8",
+						data: {},
+					}, callback );
 				}
-				internet.ajax({
-					url: '/progressRr',
-					method: 'GET',
-					contentType:"application/json; charset=utf-8",
-					data: {},
-				}, callback );
+
+				fetch( function(progress) {
+					var i = 0;
+					while(progress[i] && progress[i].time < timeFail && i < LevelList.length-1){
+						Records.you[i] = Records.you[i] || {};
+						Records.you[i].time = progress[i].time;
+						i ++;
+					}
+					callback(progress);
+				});
 			}
 
 			let progressSave = function(levelNumber,time,callback) {
@@ -1500,29 +1513,37 @@
 				});
 
 				if(win){
-					let time = timeReadable(elapsedTime); //this is to get just 1 decimal point of detail.
-					let isPersonalBest = !Records.you[level] || !Records.you[level].time || elapsedTime < Records.you[level].time;
-					let isRecord = !Records.best[level] || !Records.best[level].time || elapsedTime < Records.best[level].time;
-
-					let notify = isRecord ? 'You set the World Record!!!' : (isPersonalBest ? 'A new Personal Best!' : '');
-					if( notify ) {
-						notify += '<div class="spacer"></div>';
-					}
-
-					$('#gameSummaryWin').html(
-						'Level '+(level+1)+' completed in '+time+' seconds!<br />'+
-						'<div class="spacer"></div>'+
-						notify+
-						getTimeTable(elapsedTime,false)
-					);
-					$('#gameWin').show();
-					$('#gameWin button').hide();
-					$('#gameSaving').show();
 					progressSave( level, elapsedTime, function() {
-						$('#gameSaving').hide();
-						$('#gameWin button').show();
-						let showNextLevel = (!Rules.isDemo || level+1 < Rules.demoLevelLimit);
-						$(".buttonNextLevel").toggle(showNextLevel);
+						$('#gameWin').show();
+						$('#gameWin button').hide();
+						$('#gameSaving').show();
+
+						let time = timeReadable(elapsedTime); //this is to get just 1 decimal point of detail.
+						let isPersonalBest = !Records.you[level] || !Records.you[level].time || elapsedTime < Records.you[level].time;
+
+						progressGet( function() {
+							recordsGet( function() {
+
+								let isRecord = elapsedTime == Records.best[level].time;
+
+								let notify = isRecord ? 'You set the World Record!!!' : (isPersonalBest ? 'A new Personal Best!' : '');
+								if( notify ) {
+									notify += '<div class="spacer"></div>';
+								}
+
+								$('#gameSummaryWin').html(
+									'Level '+(level+1)+' completed in '+time+' seconds!<br />'+
+									'<div class="spacer"></div>'+
+									notify+
+									getTimeTable(elapsedTime,false)
+								);
+
+								$('#gameSaving').hide();
+								$('#gameWin button').show();
+								let showNextLevel = (!Rules.isDemo || level+1 < Rules.demoLevelLimit);
+								$(".buttonNextLevel").toggle(showNextLevel);
+							});
+						});
 					});
 				}else{
 					$('#gameSummaryLose').html('Level '+(level+1)+' failed!');
@@ -1586,8 +1607,6 @@
 				progressGet( function(progress) {
 					var i = 0;
 					while(progress[i] && progress[i].time < timeFail && i < LevelList.length-1){
-						Records.you[i] = Records.you[i] || {};
-						Records.you[i].time = progress[i].time;
 						i ++;
 					}
 					if( forceLevel !== undefined && forceLevel !== null ) {
