@@ -62,8 +62,18 @@
 				padding: 32px;
 				margin-top: 50px;
 			}
+			.timeTable tr td {
+				padding-right: 8px;
+			}
 			.ctr{
 				text-align: center;
+			}
+			.ctrMargin{
+				margin-left: auto;
+				margin-right: auto;
+			}
+			.right{
+				text-align: right;
 			}
 			.pauseMenuTitle{
 				text-align: center;
@@ -136,6 +146,16 @@
 				padding: 0px;
 				height: 48px;
 			}
+			#demoNote {
+				position: absolute;
+				top: 0px;
+				width:100%;
+			}
+			#demoNote div {
+				background-color: black;
+				color: gray;
+				float: right;
+			}
 			@media (max-width: 1336px) {
 				.menuTitle {
 					font-size: 300%;
@@ -199,7 +219,19 @@
 
  			let debug = new Debug;
 
-			Rules = Object.assign(Rules, ruleSet)
+			Rules = Object.assign(Rules, ruleSet);
+			let Records = {
+				you: [],
+				best: [],
+			};
+
+			function timeReadable(elapsedTime) {
+				let s = ''+Math.floor(elapsedTime*10)/10;
+				if( s.indexOf('.')<0 ) {
+					s += '.0';
+				}
+				return s;
+			}
 
 			function SoundBank(){
 				var list = [];
@@ -346,8 +378,20 @@
 			let LevelList = MakeLevelList();
  			let level;
  			let levelPlan;
+ 			let demoProgress = [];
+ 			let demoRecords = [];
+ 			for( let i=0 ; i<Rules.demoLevelLimit ; ++i ) {
+ 				demoProgress[i] = { time: 3*60 };
+ 				demoRecords[i]  = { time: 999, userName: 'demo' };
+ 			}
 
 			let progressGet = function(callback) {
+				if( Rules.isDemo ) {
+					setTimeout( function() { 
+						callback(demoProgress);
+					}, 1 );
+					return;
+				}
 				internet.ajax({
 					url: '/progressRr',
 					method: 'GET',
@@ -357,6 +401,18 @@
 			}
 
 			let progressSave = function(levelNumber,time,callback) {
+				if( Rules.isDemo ) {
+					setTimeout( function() {
+						demoProgress[levelNumber] = { time: time };
+						if( time < demoRecords[levelNumber].time ) {
+							demoRecords[levelNumber].time = time;
+							demoRecords[levelNumber].userName = 'demo';
+						}
+						callback( { result: 'success' } );
+					}, 1 );
+					return;
+				}
+
 				internet.ajax({
 					url: '/progressRr',
 					method: 'POST',
@@ -367,6 +423,30 @@
 					})
 				}, callback);
 			}
+
+			let recordsGet = function(callback) {
+
+				function doAssign(records) {
+					for( let i=0 ; i<LevelList.length ; ++i ) {
+						Records.best[i] = records[i];
+					}
+					callback();
+				}
+
+				if( Rules.isDemo ) {
+					setTimeout( function() { 
+						doAssign(demoRecords);
+					}, 1 );
+					return;
+				}
+				internet.ajax({
+					url: '/recordsRr',
+					method: 'GET',
+					contentType:"application/json; charset=utf-8",
+					data: {},
+				}, doAssign );
+			}
+
 
 			function MakeStars() {
 				window.star = [];
@@ -562,7 +642,7 @@
 					context.draw(pieceSpec, Img[this.type], camera)
 				}
 				onTouch(effect){
-					if(effect.type == "damage"){
+					if(effect.type == "damage" && !this.warping ){
 						this.health -= effect.amount;
 					}
 					if(effect.type == "win" && this.type == "payload" && !this.warping){
@@ -830,8 +910,8 @@
 					debug.expectNum(xVel, "xVel")
 					debug.expectNum(yVel, "yVel")
 					this.mass = 25;
-					this.width = 30;
-					this.height = 30;
+					this.width = 26;
+					this.height = 26;
 					this.xVel = xVel;
 					this.yVel = yVel;
 					this.hitBoxRadius = 15;
@@ -1357,6 +1437,21 @@
 				}
 			}
  			//ORGANIZATION
+ 			function getTimeTable(elapsedTime,andCounting) {
+ 				let time = timeReadable(elapsedTime); //this is to get just 1 decimal point of detail.
+				let timeYou = Records.you[level] && Records.you[level].time ? timeReadable(Records.you[level].time) : '?.?';
+				let timeBest = Records.best[level] && Records.best[level].time ? timeReadable(Records.best[level].time) : '?.?';
+				let userBest = Records.best[level] && Records.best[level].userName ? Records.best[level].userName : '';
+				let s = ''+
+					'<div>'+
+					'<table class="timeTable ctrMargin"><tr><td>Current time:</td><td class="right">'+time+'</td><td>'+(andCounting?'and counting':'seconds')+'</td></tr>'+
+					'<tr><td>Your best:</td><td class="right">'+timeYou+'</td><td>seconds</td></tr>'+
+					'<tr><td>Record:</td><td class="right">'+timeBest+'</td><td> by '+userBest+'</td></tr>'+
+					'</div>'
+				;
+				return s;
+			}
+
 			function displayTitleScreen(){
 				$("#canvas").hide()
 				$("#brief").hide()
@@ -1372,13 +1467,12 @@
 				$("#levelRoster").empty();
 
 				for (let i = 0; i < LevelList.length; i++) {
-					if(i <= Rules.demoLevelLimit || !Rules.isDemo){
-						let levelDisable = (i>0 && progress[i] === undefined);
-						let cls 	= levelDisable ? ' levelDisable' : '';
-						let action 	= levelDisable ? '' : 'onClick="startGameMusic(); GameStart('+i+');"';
-						$("#levelRoster").append(
-							'<button class="menuButton levelButton '+cls+'" '+action+'>'+(i+1)+'</button>');
-					}
+					let levelDisable = (i>0 && progress[i] === undefined);
+					let cls 	= levelDisable ? ' levelDisable' : '';
+					let action 	= levelDisable ? '' : 'onClick="startGameMusic(); GameStart('+i+');"';
+					$("#levelRoster").append(
+						'<button class="menuButton levelButton '+cls+'" '+action+'>'+(i+1)+'</button>'
+					);
 					if((i+1)%10 == 0){
 						$("#levelRoster").append('<br>');
 					}
@@ -1391,7 +1485,6 @@
 				$('#gameLose').hide();
  				$('button').off(".gameOver");
 
-				let time = Math.floor(elapsedTime*10)/10; //this is to get just 1 decimal point of detail.
 				$('.buttonMainMenu').on( 'click.gameOver', null, () => {
 					GameClear();
 					startMenuMusic();
@@ -1407,18 +1500,30 @@
 				});
 
 				if(win){
+					let time = timeReadable(elapsedTime); //this is to get just 1 decimal point of detail.
+					let isPersonalBest = !Records.you[level] || !Records.you[level].time || elapsedTime < Records.you[level].time;
+					let isRecord = !Records.best[level] || !Records.best[level].time || elapsedTime < Records.best[level].time;
 
-					$('#gameSummaryWin').html('Level '+(level+1)+' completed in '+time+' seconds!');
+					let notify = isRecord ? 'You set the World Record!!!' : (isPersonalBest ? 'A new Personal Best!' : '');
+					if( notify ) {
+						notify += '<div class="spacer"></div>';
+					}
+
+					$('#gameSummaryWin').html(
+						'Level '+(level+1)+' completed in '+time+' seconds!<br />'+
+						'<div class="spacer"></div>'+
+						notify+
+						getTimeTable(elapsedTime,false)
+					);
 					$('#gameWin').show();
 					$('#gameWin button').hide();
 					$('#gameSaving').show();
 					progressSave( level, elapsedTime, function() {
 						$('#gameSaving').hide();
 						$('#gameWin button').show();
+						let showNextLevel = (!Rules.isDemo || level+1 < Rules.demoLevelLimit);
+						$(".buttonNextLevel").toggle(showNextLevel);
 					});
-					if(level >= Rules.demoLevelLimit && Rules.isDemo){
-						$("#buttonNextLevel").hide()
-					}
 				}else{
 					$('#gameSummaryLose').html('Level '+(level+1)+' failed!');
 					$('#gameLose').show();
@@ -1460,8 +1565,11 @@
 						GameStart(level);
 					}
 				)
-				let time = Math.floor(elapsedTime*10)/10; //this is to get just 1 decimal point of detail.
-				$("#pauseMenuText").html('Level '+(level+1)+' paused.<br />Current time: '+time+' seconds!')
+				$("#pauseMenuText").html(
+					'Level '+(level+1)+' paused.<br />'+
+					'<div class="spacer"></div>'+
+					getTimeTable(elapsedTime,true)
+				);
 				$("#gameOverScreen").hide();
 				$("#pauseMenu").show();
 				$("#overlayMenu").show()
@@ -1478,6 +1586,8 @@
 				progressGet( function(progress) {
 					var i = 0;
 					while(progress[i] && progress[i].time < timeFail && i < LevelList.length-1){
+						Records.you[i] = Records.you[i] || {};
+						Records.you[i].time = progress[i].time;
 						i ++;
 					}
 					if( forceLevel !== undefined && forceLevel !== null ) {
@@ -1601,14 +1711,19 @@
 				$('#loading').show();
 				$('#titleButtons').hide();
 				view.loadFiles(ImageURLs, Img, function() {
-					$('#loading').hide();
-					$('#titleButtons').show();
-					startMenuMusic()
-					displayTitleScreen();
+					recordsGet( function() {
+						$('#loading').hide();
+						$('#titleButtons').show();
+						startMenuMusic()
+						displayTitleScreen();
+					});
 				});
 				onResize();
 				
 				$(window).resize( onResize );
+				setInterval( function() {
+					$('#demoNote').toggle(Rules.isDemo);
+				}, 5*1000);
 			});
 			
 	</script>
@@ -1617,6 +1732,7 @@
 		</script>
 	</head>
 	<body>
+		<div id="demoNote" class="hide"><div>DEMO</div></div>
 		<div id="menus" class="ctr">
 			<div id="menuBg">
 				<img src='images/monitor.jpg'>
@@ -1701,7 +1817,7 @@
 				</div>
 				<div id="gameOverScreen" class="menu hide">
 					<div id="gameWin">
-						<h1 class="menuTitle ctr">You Win!</h1>
+						<h1 class="menuTitle ctr">Level Complete!</h1>
 						<div class="spacer"></div>
 						<div id="gameSummaryWin" class="menuText ctr"></div>
 						<div class="spacer"></div>
@@ -1715,7 +1831,7 @@
 						</div>
 					</div>
 					<div id="gameLose">
-						<h1 class="menuTitle ctr">You Lose!</h1>
+						<h1 class="menuTitle ctr">Reactor Destroyed!</h1>
 						<div class="spacer"></div>
 						<div id="gameSummaryLose" class="menuText ctr"></div>
 						<div class="spacer"></div>
