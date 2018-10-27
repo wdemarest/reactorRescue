@@ -1593,7 +1593,9 @@
 					if( forceLevel !== undefined && forceLevel !== null ) {
 						i = forceLevel;
 					}
-					GameMain(i);
+					recordsGet( function() {
+						GameMain(i);
+					});
 				});
 			}
 
