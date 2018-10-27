@@ -566,10 +566,10 @@
 						this.health -= effect.amount;
 					}
 					if(effect.type == "win" && this.type == "payload" && !this.warping){
-						soundBank.play("warpOut")
+						//soundBank.play("warpOut")
 						this.x = effect.x;
 						this.y = effect.y;
-						this.warping = true;
+						this.warpPhase = this.warpDuration;
 						return "next level";
 					}
 					if(effect.type == "attach" && this.type == "payload"){
@@ -654,27 +654,34 @@
 					this.health = 10;
 					this.warpParticleCount = 0;
 					this.warpPhase = 0;
-					this.warpDuration = 2;
+					this.warpDuration = 0.5;
+					this.warpingIn = true;
 				}
 				particleTick(dt){
-					if(this.warpPhase < this.warpDuration){
-						this.warpPhase += dt;
+					if(this.warpPhase <= this.warpDuration){
+						if(this.warpingIn){
+							this.warpPhase += dt;
+						}else{
+							this.warpPhase -= dt;
+						}
 						this.xVel = 0;
 						this.yVel = 0;
-						if(this.warpPhase > 0.5*this.warpDuration){
-							this.warpParticleCount = this.warpPhase*15;
+						if(this.warpPhase < 0.5*this.warpDuration){
+							this.warpParticleCount = this.warpPhase*300;
 						}else{
-							this.warpParticleCount = (this.warpDuration-this.warpPhase*2)*15;
+							this.warpParticleCount = (this.warpDuration-this.warpPhase)*300/2;
 						}
 						this.warping = true;
 					}else{
 						this.warping = false;
+						this.warpingIn = false
 					}
 
-					for (var i = 0; i < dt*this.warpParticleCount*Rules.gameSpeed; i++) {
-						//new Trail(this.sim, this.x+((Math.random()-0.5)*40), this.y+((Math.random()-0.5)*40), 0, 0, 0)
+					if(this.warping){
+						for (var i = 0; i < dt*this.warpParticleCount*Rules.gameSpeed; i++) {
+							new Trail(this.sim, this.x+((Math.random()-0.5)*40), this.y+((Math.random()-0.5)*40), 0, 0, 0)
+						}	
 					}
-
 					for (var i = 0; i < dt*10*Rules.gameSpeed; i++) {
 						if(Math.random()>0.95){
 							new Electricity(this.sim, this.x+((Math.random()-0.5)*20), this.y+((Math.random()-0.5)*20), 0, 0, 0)
@@ -690,7 +697,7 @@
 						xAnchor: 0.5,
 						yAnchor: 0.5
 					};
-					if(true/*this.warpPhase > 0.5*this.warpDuration*/){
+					if(this.warpPhase > 0.5*this.warpDuration){
 						context.draw(pieceSpec, Img[this.type], camera)
 					}
 				}
@@ -1550,7 +1557,7 @@
 								soundBank.play("woosh")
 								GameOver()
 								displayGameOverScreen(true, sim.elapsedTime)
-							}, 4000
+							}, 0
 						)
 					}
 					//console.log('animView request');
