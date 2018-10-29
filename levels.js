@@ -61,7 +61,8 @@ function MakeLevelList(){
 		{
 			isTutorial: true,
 			boardSize: 3000, 
-			pieceSource: [//Tutorial 1
+			name: "Tutorial: Controls",
+			pieceSource: [
 				{type: "blower", x: 0, y: -760},
 				{type: "gate", x: 920, y: 900},
 				{type: "payload", x: 920, y: 800},
@@ -82,7 +83,8 @@ function MakeLevelList(){
 		},
 		{
 			isTutorial: true,
-			pieceSource: [//Tutorial 2
+			name: "Tutorial: Barricade",
+			pieceSource: [
 				{type: "blower", x: -100, y: 0},
 				{type: "gate", x: 0, y: 150},
 				{type: "payload", x: 0, y: -100},
@@ -94,7 +96,8 @@ function MakeLevelList(){
 		},
 		{
 			isTutorial: true,
-			pieceSource: [//Tutorial 3
+			name: "Tutorial: Pass Through",
+			pieceSource: [
 				{type: "blower", x: -0, y: -150},
 				{type: "gate", x: 0, y: 300},
 				{type: "payload", x: 0, y: 0},
@@ -117,7 +120,8 @@ function MakeLevelList(){
 		},
 		{
 			isTutorial: true,
-			pieceSource: [//Tutorial 4
+			name: "Tutorial: Mines",
+			pieceSource: [
 				{type: "blower", x: -0, y: 0},
 				{type: "gate", x: 0, y: 500},
 				{type: "payload", x: 0, y: 100},
@@ -149,7 +153,8 @@ function MakeLevelList(){
 			],
 		},
 		{
-			pieceSource: [//Minefield
+			name: "Minefield",
+			pieceSource: [
 				{type: "blower", x: 0, y: -100},
 				{type: "gate", x: 0, y: 300},
 				{type: "payload", x: 0, y: -50},
@@ -212,6 +217,7 @@ function MakeLevelList(){
 			],
 		},
 		{
+			name: "Trap",
 			pieceSource: [//Trap
 				{type: "blower", x: 0, y: -100},
 				{type: "gate", x: 0, y: 200},
@@ -229,6 +235,7 @@ function MakeLevelList(){
 			],
 		},
 		{
+			name: "Tunnel",
 			pieceSource: [//Tunnel
 				{type: "blower", x: 0, y: 0},
 				{type: "gate", x: 200, y: 100},
@@ -257,6 +264,7 @@ function MakeLevelList(){
 			],
 		},
 		{
+			name: "Out of the Box",
 			pieceSource: [//Out of the Box
 				{type: "blower", x: 100, y: 0},
 				{type: "gate", x: 0, y: 200},
@@ -277,6 +285,7 @@ function MakeLevelList(){
 			],
 		},
 		{
+			name: "Turret",
 			pieceSource: [//Turret
 				{type: "blower", x: 0, y: -125},
 				{type: "gate", x: 0, y: 200},
@@ -289,6 +298,7 @@ function MakeLevelList(){
 			],
 		},
 		{
+			name: "Fast Turret",
 			pieceSource: [//Fast Turret
 				{type: "blower", x: 0, y: -450},
 				{type: "gate", x: 0, y: 200},
@@ -301,6 +311,7 @@ function MakeLevelList(){
 			],
 		},
 		{
+			name: "Into the Box",
 			pieceSource: [//Into the Box
 				{type: "blower", x: 0, y: 100},
 				{type: "gate", x: 0, y: 0},
@@ -321,6 +332,7 @@ function MakeLevelList(){
 			],
 		},
 		{
+			name: "Blocked Tunnel",
 			pieceSource: [//Blocked Tunnel
 				{type: "blower", x: 0, y: 50},
 				{type: "gate", x: 200, y: 0},
@@ -353,6 +365,7 @@ function MakeLevelList(){
 			],
 		},
 		{
+			name: "Deflections",
 			pieceSource: [//Deflections
 				{type: "blower", x: 0, y: 50},
 				{type: "gate", x: 0, y: 500},
@@ -387,6 +400,7 @@ function MakeLevelList(){
 			],
 		},
 		{
+			name: "Blocked Tunnel 2",
 			pieceSource: [//Barricaded Tunnel 2
 				{type: "blower", x: 0, y: 50},
 				{type: "gate", x: 200, y: 0},
@@ -426,6 +440,7 @@ function MakeLevelList(){
 			],
 		},
 		{
+			name: "Spiral",
 			pieceSource: [//Spiral
 				{type: "blower", x: 0, y: 100},
 				{type: "gate", x: -100, y: 0},
@@ -476,6 +491,7 @@ function MakeLevelList(){
 			],
 		},
 		{
+			name: "Narrow Tunnel",
 			pieceSource: [//Narrow Tunnel
 				{type: "blower", x: 0, y: 0},
 				{type: "gate", x: 200, y: 100},
@@ -503,7 +519,8 @@ function MakeLevelList(){
 			],
 		},
 		{
-			pieceSource: [//Defended Spiral
+			name: "Defended Spiral",
+			pieceSource: [
 				{type: "blower", x: 0, y: 100},
 				{type: "gate", x: -100, y: 0},
 				{type: "payload", x: 300, y: 0},
@@ -554,7 +571,8 @@ function MakeLevelList(){
 			],
 		},
 		{
-			pieceSource: [//Thread the Needle
+			name: "Thread the Needle",
+			pieceSource: [
 				{type: "blower", x: 100, y: 0},
 				{type: "gate", x: 0, y: 0},
 				{type: "payload", x: 200, y: 100},
@@ -570,7 +588,8 @@ function MakeLevelList(){
 			],
 		},
 		{
-			pieceSource: [//Sniper
+			name: "Sniper",
+			pieceSource: [
 				{type: "blower", x: 0, y: -1000},
 				{type: "gate", x: 0, y: 750},
 				{type: "payload", x: 0, y: -900},
@@ -582,7 +601,8 @@ function MakeLevelList(){
 			],
 		},
 		{
-			pieceSource: [//Escort
+			name: "Escort",
+			pieceSource: [
 				{type: "blower", x: 0, y: -1000},
 				{type: "gate", x: 0, y: 750},
 				{type: "payload", x: 0, y: -900},
@@ -614,7 +634,8 @@ function MakeLevelList(){
 			background2: "earthOn",
 			//zoom: 3,
 			isVictoryLevel: true,
-			pieceSource: [//Victory
+			name: "Victory",
+			pieceSource: [
 				{type: "blower", x: 0, y: 200},
 				{type: "receptical", x: 0, y: 0},
 				{type: "payload", x: 0, y: 100},
