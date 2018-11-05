@@ -156,6 +156,15 @@
 				color: gray;
 				float: right;
 			}
+			#editorPanel{
+				background-color: white;
+				padding: 5px;
+				color: black;
+				z-index: 100;
+				position: absolute;
+				top: 0px;
+				left: 0px;
+			}
 			@media (max-width: 1336px) {
 				.menuTitle {
 					font-size: 300%;
@@ -183,6 +192,7 @@
 		<script src="jquery-3.3.1.js" charset="utf-8"></script>
 		<script src="levels.js" charset="utf-8"></script>
 		<script src="debug.js" charset="utf-8"></script>
+		<script src="editor.js" charset="utf-8"></script>
 		<script src="howler2.js" charset="utf-8"></script>
 		<script>
 			let Rules = {boardSize: 2000}
@@ -197,15 +207,19 @@
 				friction: 1,
 				minSpeed: 1,
 				playerSpeed: 500,
+				runningGameSpeed: 0.5,
 				gameSpeed: 0,
 				volume: 0.1,
 				musicVolume: 0.03,
 				isDemo: window.location.href.indexOf('demo')>=0,
+				isTest: window.location.href.indexOf('localhost')>=0,
+				startLevel: 1,
 				isCinematic: false,
 				isEditor: false,
 				showLevelBuilder: false,
 				demoLevelLimit: 9,
-				zOrders: {text: -1, particle: 0, blower: 1, payload: 2, bullet: 3, mine: 4, destructible: 5, turret: 6, barricade: 7, gate: 8, receptical: 8}
+				editorDebug: true,
+				zOrders: {text: -1, particle: 0, blower: 1, reactor: 2, bullet: 3, mine: 4, destructible: 5, turret: 6, barricade: 7, bouncer: 7, gate: 8, receptical: 8}
 			};
 
 			let canvasWidth;
@@ -227,6 +241,35 @@
 					s += '.0';
 				}
 				return s;
+			}
+
+			function squareToCircleCollision(pieceX, pieceY, piece2X, piece2Y, pieceHitBoxRadius, piece2Width, piece2Height){
+				let sx = piece2X-piece2Width/2;
+				let sy = piece2Y-piece2Height/2;
+				let ex = piece2X+piece2Width/2;
+				let ey = piece2Y+piece2Height/2;
+
+				//Cardinal Directions
+				if(pieceX+pieceHitBoxRadius > sx && pieceX-pieceHitBoxRadius < ex && pieceY > sy && pieceY < ey){
+					return true;
+				}
+				if(pieceY+pieceHitBoxRadius > sy && pieceY-pieceHitBoxRadius < ey && pieceX > sx && pieceX < ex){
+					return true;
+				}
+
+				//Corners
+				if(pieceX < sx && pieceY < sy && calcDist(pieceX, pieceY, sx, sy) < pieceHitBoxRadius){
+					return true;
+				}
+				if(pieceX > ex && pieceY < sy && calcDist(pieceX, pieceY, ex, sy) < pieceHitBoxRadius){
+					return true;
+				}
+				if(pieceX > sx && pieceY < ey && calcDist(pieceX, pieceY, sx, ey) < pieceHitBoxRadius){
+					return true;
+				}
+				if(pieceX > ex && pieceY < ey && calcDist(pieceX, pieceY, ex, ey) < pieceHitBoxRadius){
+					return true;
+				}
 			}
 
 			function SoundBank(){
@@ -381,12 +424,25 @@
  				demoRecords[i]  = { time: 999, userName: 'demo' };
  			}
 
+ 			let testProgress = [];
+ 			let testRecords = [];
+ 			for( let i=0 ; i<LevelList.length ; ++i ) {
+ 				testProgress[i] = { time: 3*60 };
+ 				testRecords[i]  = { time: 999, userName: 'tester' };
+ 			}
+
 			let progressGet = function(callback) {
 
 				function fetch(callback) {
 					if( Rules.isDemo ) {
 						setTimeout( function() { 
 							callback(demoProgress);
+						}, 1 );
+						return;
+					}
+					if( Rules.isTest ) {
+						setTimeout( function() { 
+							callback(testProgress);
 						}, 1 );
 						return;
 					}
@@ -421,6 +477,17 @@
 					}, 1 );
 					return;
 				}
+				if( Rules.isTest ) {
+					setTimeout( function() {
+						testProgress[levelNumber] = { time: time };
+						if( time < testRecords[levelNumber].time ) {
+							testRecords[levelNumber].time = time;
+							testRecords[levelNumber].userName = 'test';
+						}
+						callback( { result: 'success' } );
+					}, 1 );
+					return;
+				}
 
 				internet.ajax({
 					url: '/progressRr',
@@ -445,6 +512,12 @@
 				if( Rules.isDemo ) {
 					setTimeout( function() { 
 						doAssign(demoRecords);
+					}, 1 );
+					return;
+				}
+				if( Rules.isTest ) {
+					setTimeout( function() { 
+						doAssign(testRecords);
 					}, 1 );
 					return;
 				}
@@ -502,6 +575,8 @@
 					this.nowPrior = null;
  					this.gameFailLatch = false;
 
+ 					this.editor = new Editor(this);
+
  					for (let i = 0; i < levelPlan.pieceSource.length; i++) {
  						let object = levelPlan.pieceSource[i];
 					
@@ -513,8 +588,8 @@
 					if(type == "blower"){
 						newPiece = (new Blower(this, x, y))
 					}
-					if(type == "payload"){
-						newPiece = (new Payload(this, x, y))
+					if(type == "reactor"){
+						newPiece = (new Reactor(this, x, y))
 					}
 					if(type == "gate"){
 						newPiece = (new Gate(this, x, y))
@@ -528,14 +603,20 @@
 					if(type == "barricade"){
 						newPiece = (new Barricade(this, x, y))
 					}
+					if(type == "bouncer"){
+						newPiece = (new Bouncer(this, x, y, object.bounceAmount))
+					}
 					if(type == "destructible"){
 						newPiece = (new Destructible(this, x, y))
 					}
 					if(type == "turret"){
-						newPiece = (new Turret(this, x, y, object.fireDelay, object.bulletSpeed))
+						newPiece = (new Turret(this, x, y, object.fireDelay, object.bulletSpeed, object.fireType, object.angle))
 					}
 					if(type == "bullet"){
 						newPiece = (new Bullet(this, x, y, object.xVel, object.yVel))
+					}
+					if(type == "phaseBullet"){
+						newPiece = (new PhaseBullet(this, x, y, object.xVel, object.yVel))
 					}
 					if(type == "text"){
 						newPiece = (new Text(this, x, y, object.text, object.condition))
@@ -551,8 +632,8 @@
  				get blower(){
  					return this.find("blower");
  				}
- 				get payload(){
- 					return this.find("payload");
+ 				get reactor(){
+ 					return this.find("reactor");
  				}
  				tick(dt){
 					this.elapsedTime += dt;
@@ -599,9 +680,15 @@
 							if(piece == piece2){
 								continue;
 							}
-							if(calcDist(piece.x, piece.y, piece2.x, piece2.y) < (piece.hitBoxRadius+piece2.hitBoxRadius)){
-								if(piece.onTouch(piece2.effect) == "next level"){
-									nextLevel = true;
+							if(piece2.hitBoxRadius){
+								if(calcDist(piece.x, piece.y, piece2.x, piece2.y) < (piece.hitBoxRadius+piece2.hitBoxRadius)){
+									if(piece.onTouch(piece2.effect) == "next level"){
+										nextLevel = true;
+									}
+								}
+							}else{
+								if(squareToCircleCollision(piece.x, piece.y, piece2.x, piece2.y, piece.hitBoxRadius, piece2.width, piece2.height)){
+									piece.onTouch(piece2.effect)
 								}
 							}
 						}
@@ -624,8 +711,10 @@
 					this.y = y;
 					let z;
 					if(isParticle){
+						this.isParticle = true;
 						z = Rules.zOrders.particle;
 					}else{
+						this.isParticle = false;
 						z = Rules.zOrders[this.type];
 					}
 					debug.expectNum(z, "z")
@@ -641,6 +730,7 @@
 				}
 				draw(context, camera){
 					let pieceSpec = {
+						piece: this,
 						x: this.x,
 						y: this.y,
 						width: this.width,
@@ -654,14 +744,32 @@
 					if(effect.type == "damage" && !this.warping ){
 						this.health -= effect.amount;
 					}
-					if(effect.type == "win" && this.type == "payload" && !this.warping){
+					if(effect.type == "bounce"){
+						//this.health -= 10;
+						if(Math.abs(effect.x - this.x) > Math.abs(effect.y - this.y)){
+							if(this.x > effect.x && this.xVel < 0){
+								this.xVel *= -effect.amount;
+							}
+							if(this.x < effect.x && this.xVel > 0){
+								this.xVel *= -effect.amount;
+							}
+						}else{
+							if(this.y > effect.y && this.yVel < 0){
+								this.yVel *= -effect.amount;
+							}
+							if(this.y < effect.y && this.yVel > 0){
+								this.yVel *= -effect.amount;
+							}
+						}
+					}
+					if(effect.type == "win" && this.type == "reactor" && !this.warping){
 						//soundBank.play("warpOut")
 						this.x = effect.x;
 						this.y = effect.y;
 						this.warpPhase = this.warpDuration;
 						return "next level";
 					}
-					if(effect.type == "attach" && this.type == "payload"){
+					if(effect.type == "attach" && this.type == "reactor"){
 						if(!this.attached){
 							soundBank.stop("gameMusic")
 							soundBank.playLoop("victoryMusic")
@@ -709,7 +817,7 @@
 						}
 
 						if( this.dead ) {
-							if(this.type == "payload" ){
+							if(this.type == "reactor" ){
 								soundBank.play("explosionBig");
 								let temp = this;
 								for( let i=0 ; i<7 ; ++i ) {
@@ -730,9 +838,9 @@
 				}
 			}
 
-			class Payload extends Piece{
+			class Reactor extends Piece{
 				constructor(sim, x, y){
-					super("payload", sim, x, y)
+					super("reactor", sim, x, y)
 					this.mass = 25;
 					this.width = 40;
 					this.height = 40;
@@ -779,6 +887,7 @@
 				}
 				draw(context, camera){
 					let pieceSpec = {
+						piece: this,
 						x: this.x,
 						y: this.y,
 						width: this.width,
@@ -821,7 +930,7 @@
 					this.particleCount = 0;
 				}
 				particleTick(dt){
-					if(this.sim.payload.attached && !this.sim.board.earthIsOn){
+					if(this.sim.reactor.attached && !this.sim.board.earthIsOn){
 						this.particleCount += 0.5;
 					}
 					for(var i = 0; i < dt*this.particleCount*Rules.gameSpeed; i++) {
@@ -855,6 +964,19 @@
 					this.effect = {type: "damage", amount: 10};
 				}
 			}
+			class Bouncer extends Piece{
+				constructor(sim, x, y, bounceAmount){
+					super("bouncer", sim, x, y)
+					this.width = 100;
+					this.height = 100;
+					this.bounceAmount = bounceAmount;
+					this.blowable = false;
+					this.effect = {type: "bounce"};
+				}
+				tick(dt){
+					this.effect = {type: "bounce", x: this.x, y: this.y, amount: this.bounceAmount};
+				}
+			}
 			class Destructible extends Piece{
 				constructor(sim, x, y){
 					super("destructible", sim, x, y)
@@ -868,10 +990,13 @@
 				}
 			}
 			class Turret extends Piece{
-				constructor(sim, x, y, fireDelay, bulletSpeed){
+				constructor(sim, x, y, fireDelay, bulletSpeed, fireType, angleDeg){
 					super("turret",sim, x, y)
 					debug.expectNum(fireDelay, "fireDelay")
 					debug.expectNum(bulletSpeed, "bulletSpeed")
+					this.fireType = (fireType ? fireType : "bullet")
+					this.angleFixed = (angleDeg !== undefined);
+					this.angle = (angleDeg === undefined ? 0 : degToRad(angleDeg));
 					this.sim = sim;
 					this.width = 100;
 					this.height = 100;
@@ -881,12 +1006,11 @@
 					this.fireDelay = fireDelay;
 					this.timeToNextFire = this.fireDelay;
 					this.bulletSpeed = bulletSpeed;
-					this.angle = 0;
 				}
 				tick(dt){
 					this.particleTick(dt);
-					let target = this.sim.payload;
-					if(target){
+					let target = this.sim.reactor;
+					if(target && !this.angleFixed){
 						this.angle = calcAngle(this.x, this.y, target.x, target.y);
 					}
 
@@ -896,13 +1020,14 @@
 						let velocity = this.bulletSpeed;
 						let xVel = velocity*Math.cos(this.angle);
 						let yVel = velocity*Math.sin(this.angle);
-						this.sim.addPiece(this.x, this.y, "bullet", {type: "bullet", x: this.x, y: this.y, xVel: xVel, yVel: yVel})
+						this.sim.addPiece(this.x, this.y, this.fireType, {type: this.fireType, x: this.x, y: this.y, xVel: xVel, yVel: yVel})
 					}else{
 						this.timeToNextFire -= dt*Rules.gameSpeed;
 					}
 				}
 				draw(context, camera){
 					let pieceSpec = {
+						piece: this,
 						x: this.x,
 						y: this.y,
 						width: this.width,
@@ -910,7 +1035,7 @@
 						xAnchor: 0.5,
 						yAnchor: 0.5
 					};
-					context.drawRotated(pieceSpec, Img.turret, camera, radToDeg(this.angle))
+					context.draw(pieceSpec, Img.turret, camera, radToDeg(this.angle))
 				}
 			}
 			class Bullet extends Piece{
@@ -937,11 +1062,21 @@
 					}
 				}
 			}
+			class PhaseBullet extends Bullet{
+				constructor(sim, x, y, xVel, yVel){
+					super(sim, x, y, xVel, yVel)
+					this.type = "phaseBullet";
+					this.width = 90;
+					this.height = 45;
+					this.hitBoxRadius = 15;
+					this.blowable = false;
+				}
+			}
 			class Text extends Piece{
 				constructor(sim, x, y, text, condition){
 					super("text", sim, x, y)
 					debug.expect(text, "string", "text")
-					this.hitBoxRadius = 0;
+					this.hitBoxRadius = 10;
 					this.text = text;
 					this.condition = condition;
 					this.blowable = false;
@@ -964,7 +1099,7 @@
 
  			class Blower extends Piece{
 				constructor(sim, x, y, control){
-					super("blower", sim, x, y, 1)
+					super("blower", sim, x, y)
 					this.width = 50;
 					this.height = 50;
 					this.hitBoxRadius = 25;
@@ -979,6 +1114,7 @@
 				}
 				draw(context, camera){
 					let pieceSpec = {
+						piece: this,
 						x: this.x,
 						y: this.y,
 						width: this.width,
@@ -987,7 +1123,7 @@
 						yAnchor: 0.5
 					};
 					let angle = (this.angle/Math.PI)*180
-					context.drawRotated(pieceSpec, Img.blower, camera, angle)
+					context.draw(pieceSpec, Img.blower, camera, angle)
 				}
 				moveTick(dt){
 					if(wDown){
@@ -1071,6 +1207,7 @@
 				}
 				draw(context, camera){
 					let pieceSpec = {
+						piece: this,
 						x: this.x,
 						y: this.y,
 						width: this.width,
@@ -1078,11 +1215,7 @@
 						xAnchor: 0.5,
 						yAnchor: 0.5
 					};
-					if(this.angle == 0){
-						context.draw(pieceSpec, Img[this.type], camera)
-					}else{
-						context.drawRotated(pieceSpec, Img[this.type], camera, this.angle)
-					}
+					context.draw(pieceSpec, Img[this.type], camera, this.angle)
 				}
 				tick(dt){
 					if(!this.dead){
@@ -1142,8 +1275,7 @@
 			class ExplosionGeneric extends Particle{
 				constructor(type, sim, x, y, xVel, yVel, scale=1.0){
 					super(type, sim, x, y, xVel, yVel)
-					this.width = 200;
-					this.height = 200;
+					this.width = 200;					this.height = 200;
 					this.angle = 0;
 					this.totalLife = 0.52;
 					this.lifeRemaining = this.totalLife;
@@ -1157,6 +1289,7 @@
 					let frameHeight = 190;
 
 					let pieceSpec = {
+						piece: this,
 						sx: frame*frameWidth,
 						sy: 0,
 						sw: frameWidth,
@@ -1188,7 +1321,7 @@
 			let aDown;
 			let dDown;
 			function initControls(sim){
-				let blower = sim.pieceList[0];
+				let blower = sim.blower;
 				let mouseX = 0;
 				let mouseY = 0;
 				$( document ).on("mousemove.controls", null, function( event ) {
@@ -1207,9 +1340,16 @@
 					soundBank.stop("repulse");
 					blower.blowing = false;
 				});
-				$( document ).on("keydown.controls", null, function( event ) {
-					if( event.key == 'D' ) {
+				$( document ).on("keydown", null, function( event ) {
+					if( event.key == 'e' || event.key == 'E') {
+						if(sim.editor.active){
+							sim.editor.close()
+						}else{
+							sim.editor.open()
+						}
 					}
+				});
+				$( document ).on("keydown.controls", null, function( event ) {
 					if(event.key == "w" || event.key == "W"){
 						wDown = true;
 					}
@@ -1229,32 +1369,6 @@
 						}else{
 							UnpauseGame()
 							console.log("unpause")
-						}
-					}
-					if(Rules.isEditor){
-						if(event.key == "0"){
-							EditLevel(sim, levelPlan, "deletePiece")
-						}
-						if(event.key == "1"){
-							EditLevel(sim, levelPlan, "blower", mouseX, mouseY)
-						}
-						if(event.key == "2"){
-							EditLevel(sim, levelPlan, "gate", mouseX, mouseY)
-						}
-						if(event.key == "3"){
-							EditLevel(sim, levelPlan, "payload", mouseX, mouseY)
-						}
-						if(event.key == "4"){
-							EditLevel(sim, levelPlan, "barricade", mouseX, mouseY)
-						}
-						if(event.key == "5"){
-							EditLevel(sim, levelPlan, "mine", mouseX, mouseY)
-						}
-						if(event.key == "6"){
-							EditLevel(sim, levelPlan, "destructible", mouseX, mouseY)
-						}
-						if(event.key == "7"){
-							EditLevel(sim, levelPlan, "turret", mouseX, mouseY)
 						}
 					}
 				});
@@ -1278,14 +1392,16 @@
  			//VIEW
  			let ImageURLs = {
 				blower: 'images/mover.png',
-				payload: 'images/payload.png',
+				reactor: 'images/reactor.png',
 				gate: 'images/gate.png',
 				receptical: 'images/receptical.png',
 				mine: 'images/mine.png',
 				barricade: 'images/barricade.png',
+				bouncer: 'images/bouncer.png',
 				destructible: 'images/destructible.png',
 				turret: 'images/turret.png',
 				bullet: 'images/bullet.png',
+				phaseBullet: 'images/phaseBullet.png',
 				background: 'images/black.png',
 				earthOff: 'images/earthOff.png',
 				earthOn: 'images/earthOn.png',
@@ -1371,25 +1487,13 @@
 						}
 					},1)
 				}
- 				myCanvas(canvasId, board){
+ 				myCanvas(canvasId, board, middleWare){
 					var canvas = document.getElementById(canvasId);
 					var context = canvas.getContext('2d');
+					context.middleWare = middleWare;
 					context.canvas.width = window.innerWidth;
 					context.canvas.height = window.innerHeight;
-					
-					context.draw = function(spec, imageObj, camera){
-						let drawX = spec.x-(camera.x-canvasWidth/2);
-						let drawY = spec.y-(camera.y-canvasHeight/2);
-						if(spec.xAnchor && spec.yAnchor){
-							drawX -= spec.width*spec.xAnchor;
-							drawY -= spec.height*spec.yAnchor;
-						}
-						if(spec.sx !== undefined){
-							this.drawImage(imageObj, spec.sx, spec.sy, spec.sw, spec.sh, drawX, drawY, spec.width, spec.height);
-						}else{
-							this.drawImage(imageObj, drawX, drawY, spec.width, spec.height);
-						}
-					}.bind(context)
+
 					context.clear = function(sim){
 						if( levelPlan.backgroundImg && levelPlan.backgroundImg.complete ) {
 							let img = levelPlan.backgroundImg;
@@ -1415,10 +1519,7 @@
 						}
 					
 					}.bind(context)
-					/*context.clearMinimap = function(spec, imageObj){
-						this.drawImage(Img.background, 0, 0, 280, 260);
-					}.bind(context)*/
-					context.drawRotated = function(spec, imageObj, camera, degrees){
+					context.draw = function(spec, imageObj, camera, degrees){
 						let x = spec.x-(camera.x-canvasWidth/2);
 						let y = spec.y-(camera.y-canvasHeight/2);
 						x -= spec.width*spec.xAnchor;
@@ -1427,13 +1528,32 @@
 						let w = spec.width;
 						let h = spec.height;
 
-						this.save();
-						this.translate(x+w/2, y+h/2);
-						this.rotate(degrees*Math.PI/180.0);
-						this.translate(-x-w/2, -y-h/2);
-						this.drawImage(imageObj, x, y, w, h);
-						this.restore();
+						if(degrees){
+							this.save();
+							this.translate(x+w/2, y+h/2);
+							this.rotate(degrees*Math.PI/180.0);
+							this.translate(-x-w/2, -y-h/2);
+						}
+						this.middleWare(this, spec.piece, x, y, w, h);
+						if(spec.sx !== undefined){
+							this.drawImage(imageObj, spec.sx, spec.sy, spec.sw, spec.sh, x, y, w, h);
+						}else{
+							this.drawImage(imageObj, x, y, w, h);
+						}
+						if(degrees){
+							this.restore();
+						}
 					}.bind(context)
+					context.drawHighlight = function(x, y, w, h){
+						context.beginPath();
+						context.lineWidth="6";
+						context.strokeStyle="red";
+						context.rect(x, y, w, h);
+						context.stroke();
+					}.bind(context)
+					/*context.clearMinimap = function(spec, imageObj){
+						this.drawImage(Img.background, 0, 0, 280, 260);
+					}.bind(context)*/
 					return context
 				}
  				render(context, sim){
@@ -1597,7 +1717,7 @@
 
 			}
 			function UnpauseGame(){
-				Rules.gameSpeed = 0.5;
+				Rules.gameSpeed = Rules.runningGameSpeed;
 				$("#overlayMenu").hide()
 			}
 
@@ -1633,8 +1753,13 @@
 				levelPlan = LevelList[level];
 				let view = new View();
 				let board = new Board(levelPlan.boardSize || Rules.boardSize);
-				let context = view.myCanvas('canvas', board);
 				let sim = new Sim(board);
+				let middleWare = function(context, piece, x, y, w, h){
+					if(sim.editor.isSelected(piece)){
+						context.drawHighlight(x, y, w, h);
+					}
+				}
+				let context = view.myCanvas('canvas', board, middleWare);
 				initControls(sim);
 				if( levelPlan.backgroundUrl ) {
 					levelPlan.backgroundImg = new Image();
@@ -1642,7 +1767,7 @@
 				}
 				
 				function tickSim(){
-					if( !sim.gameFailLatch && !sim.payload){
+					if( !sim.gameFailLatch && !sim.reactor){
 						sim.gameFailLatch = true;
 						setTimeout(() => {
 							GameOver()
@@ -1706,6 +1831,25 @@
 				handleInterval = setInterval( silly, 1 );
 
 			}
+			function triggerWhenReady(buttonSelector, trigger){
+				let handle = setInterval(()=>{
+					let shown = $(buttonSelector).is(":visible")
+					if(shown){
+						$(buttonSelector).trigger(trigger);
+						clearInterval(handle);
+					}
+				}, 1)
+			}
+
+			function checkEditorDebug(){
+				if(!Rules.editorDebug){return}
+				triggerWhenReady("#levelSelectButton", "click")
+				triggerWhenReady("#levelRoster button:nth-child("+Rules.startLevel+")", "click")
+				var press = jQuery.Event("keydown");
+				press.ctrlKey = false;
+				press.key = "e";
+				triggerWhenReady("#canvas", press)
+			}
 
 			function onResize() {
 				let canvasId = "canvas"
@@ -1736,6 +1880,7 @@
 						$('#titleButtons').show();
 						startMenuMusic()
 						displayTitleScreen();
+						checkEditorDebug();
 					});
 				});
 				onResize();
@@ -1772,7 +1917,7 @@
 						Briefing
 					</button>
 					<div class='spacer'></div>
-					<button class="menuButton" onClick="progressGet(displayLevelSelect);">
+					<button id="levelSelectButton" class="menuButton" onClick="progressGet(displayLevelSelect);">
 						Level Select
 					</button>
 				</div>
@@ -1864,6 +2009,13 @@
 
 			</div>
 			<canvas id="canvas" width="100%" height="100%"></canvas>
+			<div id="editorPanel">
+				<div> Placing type: <span id="placingType"></span></div>
+				<div id="attributeBoxes"></div>
+				<button id="showDataButton">Show Data</button>
+				<button id="hideDataButton">Hide Data</button>
+				<div id="levelData"></div>
+			</div>
 		</div>
 	</body>
 </html>
