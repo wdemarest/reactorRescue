@@ -809,7 +809,9 @@
 						}
 						this.applyVelocity(dt)
 
-						this.applyFriction(dt)
+						if(this.hasFriction !== false){
+							this.applyFriction(dt)
+						}
 
 						if( !this.sim.board.contains(this.x,this.y) && !this.surviveOutOfBounds) {
 							this.dead = true;
@@ -909,7 +911,7 @@
 					super("gate", sim, x, y)
 					this.width = 150;
 					this.height = 150;
-					this.hitBoxRadius = 7.5;
+					this.hitBoxRadius = 30;
 					this.blowable = false;
 					this.effect = {type: "win", x: this.x, y: this.y};
 				}
@@ -1051,16 +1053,8 @@
 					this.yVel = (yVel ? yVel : 0);
 					this.hitBoxRadius = 15;
 					this.blowable = true;
+					this.hasFriction = false;
 					this.effect = {type: "damage", amount: 10};
-				}
-				tick(dt){
-					this.particleTick(dt);
-
-					this.applyVelocity(dt)
-
-					if( !this.sim.board.contains(this.x,this.y) ) {
-						this.dead = true;
-					}
 				}
 			}
 			class PhaseBullet extends Bullet{
@@ -1071,6 +1065,7 @@
 					this.height = 45;
 					this.hitBoxRadius = 15;
 					this.blowable = false;
+					this.hasFriction = false;
 				}
 			}
 			class Text extends Piece{

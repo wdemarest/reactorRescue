@@ -45,7 +45,7 @@ class Editor{
 			return calcDist(a.x, a.y, x, y)-calcDist(b.x, b.y, x, y)
 		});
 		let piece = list[0];
-		if(calcDist(piece.x, piece.y, x, y) < (piece.hitBoxRadius ? piece.hitBoxRadius : piece.width)){
+		if(calcDist(piece.x, piece.y, x, y) < (piece.hitBoxRadius ? piece.hitBoxRadius : piece.width/2)){
 			if(shifted){
 				this.piecesSelected.push(piece);
 				this.renderPanel()
