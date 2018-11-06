@@ -55,6 +55,13 @@ function MakeLevelList(){
 
 	let LevelList = [
 		{
+			name: "Blank",
+			editorTemplate: true,
+			pieceSource: [
+				{type: "blower", x: 0, y: 0},
+			],
+		},
+		{
 			isTutorial: true,
 			boardSize: 3000, 
 			name: "Tutorial: Controls",

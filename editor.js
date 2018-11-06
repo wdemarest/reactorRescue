@@ -7,11 +7,13 @@ class Editor{
 		this.sim = sim;
 		this.typeSelected = "reactor";
 		this.piecesSelected = []
-		this.snapInt = 25;
+		this.snapInt = 50;
 		this.active = false;
-		this.planAttrs = {type: true, x: true, y: true, text: true, fireDelay: true, bulletSpeed: true, bounceAmount: true}
+		this.planAttrs = {type: true, x: true, y: true, text: true, fireDelay: true, bulletSpeed: true, bounceAmount: true, angle: true}
 	}
 	open(){
+		this.sim.pieceList = [];
+		this.sim.makePieceListFromSource(levelPlan.pieceSource)
 		this.hideData();
 		this.active = true;
 		Rules.gameSpeed = 0;
@@ -21,6 +23,7 @@ class Editor{
 		console.log("u opend da thange!")
 	}
 	close(){
+		levelPlan.pieceSource = this.renderData();
 		this.active = false
 		Rules.gameSpeed = Rules.runningGameSpeed;
 		$("#editorPanel").hide()
@@ -37,19 +40,25 @@ class Editor{
 		y *= this.snapInt;
 		return [x, y]
 	}
-	click(x, y){
+	click(x, y, shifted){
 		let list = this.sim.pieceList.sort((a, b)=>{
 			return calcDist(a.x, a.y, x, y)-calcDist(b.x, b.y, x, y)
 		});
 		let piece = list[0];
 		if(calcDist(piece.x, piece.y, x, y) < (piece.hitBoxRadius ? piece.hitBoxRadius : piece.width)){
-			this.piecesSelected.push(piece);
-			this.renderPanel()
+			if(shifted){
+				this.piecesSelected.push(piece);
+				this.renderPanel()
+			}else{
+				this.deselect(true)
+				this.piecesSelected.push(piece);
+				this.renderPanel()
+			}
 		}else{
 			this.place(x, y)
 		}
 	}
-	deselect(param1, param2){
+	deselect(param1){
 		if(param1 === true){
 			this.piecesSelected = [];
 		}
@@ -74,9 +83,10 @@ class Editor{
 			}
 			data.push(temp);
 		}
-		$("#levelData").html(JSON.stringify(data));
+		return data;
 	}
 	showData(){
+		$("#levelData").html(JSON.stringify(this.renderData()));
 		$("#showDataButton").hide();
 		$("#hideDataButton").show();
 		$("#levelData").show();
@@ -95,9 +105,10 @@ class Editor{
 		$("#showDataButton").on("click.editorControls", null, ()=>this.showData());
 		$("#hideDataButton").on("click.editorControls", null, ()=>this.hideData());
 
-		$("#editorPanel").on("keypress.editorControls", null, stopEvent);
+		$("#editorPanel").on("keyup.editorControls", null, (event)=>{
+			stopEvent(event);
+		});
 		$("#editorPanel").on("click.editorControls", null, (event)=>{
-			console.log("we has click");
 			stopEvent(event);
 		});
 
@@ -106,7 +117,7 @@ class Editor{
 			mouseY = event.pageY+blower.y-canvasHeight/2;
 		});
 		$( document ).on("click.editorControls", null, function( event ) {
-			this.click(mouseX, mouseY)
+			this.click(mouseX, mouseY, event.shiftKey)
 		}.bind(scope));
 		$( document ).on("keyup.editorControls", null, function( event ) {
 			if(event.key == "Backspace"){
@@ -114,6 +125,9 @@ class Editor{
 			}
 			if(event.key == "d" || event.key == "D"){
 				this.deselect(true);
+			}
+			if( event.key == 'e' || event.key == 'E') {
+				this.close()
 			}
 			if(event.key == "0"){
 				this.setType("text")
@@ -161,14 +175,15 @@ class Editor{
 				let input = $('<input type="text" id="nameInput"></input>').appendTo(span);
 				input.val(piece[attr]);
 				input.on("keypress.editorGroup", null, function(event){
-					if(event.key == "Enter"){
-						piece[attr] = $(this, "input").val();
+					let val = $(this, "input").val();
+					if( typeof 0+val === "number"){
+						val += 0;
 					}
+					piece[attr] = val;
 				});
 				span.appendTo("#attributeBoxes");
 			}
 		}
-		this.renderData();
 		$("#editorPanel").show()
 	}
 	chooseType(typeNum){
