@@ -244,11 +244,11 @@
 				return s;
 			}
 
-			function squareToCircleCollision(pieceX, pieceY, piece2X, piece2Y, pieceHitBoxRadius, piece2Width, piece2Height){
-				let sx = piece2X-piece2Width/2;
-				let sy = piece2Y-piece2Height/2;
-				let ex = piece2X+piece2Width/2;
-				let ey = piece2Y+piece2Height/2;
+			function squareToCircleCollision(pieceX, pieceY, piece2X, piece2Y, pieceHitBoxRadius, piece2HitBoxSize){
+				let sx = piece2X-piece2HitBoxSize/2;
+				let sy = piece2Y-piece2HitBoxSize/2;
+				let ex = piece2X+piece2HitBoxSize/2;
+				let ey = piece2Y+piece2HitBoxSize/2;
 
 				//Cardinal Directions
 				if(pieceX+pieceHitBoxRadius > sx && pieceX-pieceHitBoxRadius < ex && pieceY > sy && pieceY < ey){
@@ -691,7 +691,7 @@
 									}
 								}
 							}else{
-								if(squareToCircleCollision(piece.x, piece.y, piece2.x, piece2.y, piece.hitBoxRadius, piece2.width, piece2.height)){
+								if(squareToCircleCollision(piece.x, piece.y, piece2.x, piece2.y, piece.hitBoxRadius, piece2.hitBoxSize)){
 									piece.onTouch(piece2.effect)
 								}
 							}
@@ -973,8 +973,9 @@
 			class Bouncer extends Piece{
 				constructor(sim, x, y, bounceAmount){
 					super("bouncer", sim, x, y)
-					this.width = 100;
-					this.height = 100;
+					this.width = 120;
+					this.height = 120;
+					this.hitBoxSize = 100;
 					this.bounceAmount = bounceAmount;
 					this.blowable = false;
 					this.effect = {type: "bounce"};
@@ -1390,7 +1391,7 @@
 				receptical: 'images/receptical.png',
 				mine: 'images/mine.png',
 				barricade: 'images/barricade.png',
-				bouncer: 'images/bouncer.png',
+				bouncer: 'images/bouncerNoGlowSharp.png',
 				destructible: 'images/destructible.png',
 				turret: 'images/turret.png',
 				bullet: 'images/bullet.png',
