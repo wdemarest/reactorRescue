@@ -17,6 +17,7 @@ class Editor{
 			fireDelay: true,
 			bulletSpeed: true,
 			bounceAmount: true,
+			fireType: true,
 			angle: (angle) => Math.round(angle*100)/100,
 			angleFixed: true,
 			xVel: true,

@@ -15,6 +15,7 @@
 				width: 100%;
 				height: 100%;
 				cursor: crosshair;
+				display: none;
 			}
 			#menus{
 				border: 1px solid black;
@@ -1737,7 +1738,6 @@
 				dDown = false;
 
 				$("#menus").hide()
-				$("#canvas").show()
 				level = newLevel;
 				levelPlan = LevelList[level];
 				let view = new View();
@@ -1754,7 +1754,7 @@
 					levelPlan.backgroundImg = new Image();
 					levelPlan.backgroundImg.src = levelPlan.backgroundUrl;
 				}
-				
+
 				function tickSim(){
 					if( !sim.gameFailLatch && !sim.reactor && !levelPlan.editorTemplate){
 						sim.gameFailLatch = true;
@@ -1828,6 +1828,8 @@
 				}
 				handleInterval = setInterval( silly, 1 );
 
+				$("#canvas").show()
+
 			}
 			function triggerWhenReady(buttonSelector, trigger){
 				let handle = setInterval(()=>{
@@ -1843,10 +1845,10 @@
 				if(!Rules.editorDebug){return}
 				triggerWhenReady("#levelSelectButton", "click")
 				triggerWhenReady("#levelRoster button:nth-child("+Rules.startLevel+")", "click")
-				var press = jQuery.Event("keydown");
+				var press = jQuery.Event("keyup");
 				press.ctrlKey = false;
 				press.key = "e";
-				triggerWhenReady("#canvas", press)
+				triggerWhenReady("#canvas", press);
 			}
 
 			function onResize() {
