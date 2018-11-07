@@ -1,7 +1,3 @@
-function EditLevel(sim, levelPlan, type, x, y, object){
-	//levelPlan.pieceSource.push({type: type, x: x, y: y})
-	sim.addPiece(x, y, type, object)
-}
 function MakeLevelList(){
 
 	let backgroundUrlList = [

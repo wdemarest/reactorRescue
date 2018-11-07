@@ -68,7 +68,9 @@ class Editor{
 				this.renderPanel()
 			}
 		}else{
-			this.place(x, y)
+			let piece = this.place(x, y)
+			this.deselect(true)
+			this.piecesSelected.push(piece);
 		}
 	}
 	deselect(param1){
@@ -112,6 +114,8 @@ class Editor{
 	initControls(){
 		let mouseX = 0;
 		let mouseY = 0;
+		let dragStartX = 0;
+		let dragStartY = 0;
 		let blower = this.sim.blower;
 		let scope = this;
 
@@ -124,13 +128,28 @@ class Editor{
 		$("#editorPanel").on("click.editorControls", null, (event)=>{
 			stopEvent(event);
 		});
-
 		$( document ).on("mousemove.editorControls", null, function( event ) {
 			mouseX = event.pageX+blower.x-canvasWidth/2;
 			mouseY = event.pageY+blower.y-canvasHeight/2;
 		});
 		$( document ).on("click.editorControls", null, function( event ) {
-			this.click(mouseX, mouseY, event.shiftKey)
+			if(dragStartX == mouseX && dragStartY == mouseY){
+				this.click(mouseX, mouseY, event.shiftKey)
+			}
+		}.bind(scope));
+		$( document ).on("mousedown.editorControls", null, function( event ) {
+			dragStartX = mouseX;
+			dragStartY = mouseY;
+		}.bind(scope));
+		$( document ).on("mouseup.editorControls", null, function( event ) {
+			for (var i = 0; i < this.piecesSelected.length; i++) {
+				let piece = this.piecesSelected[i];
+				piece.x += mouseX-dragStartX;
+				piece.y += mouseY-dragStartY;
+				if(event.shiftKey){
+					[piece.x, piece.y] = this.snap(piece.x, piece.y);
+				}
+			}
 		}.bind(scope));
 		$( document ).on("keyup.editorControls", null, function( event ) {
 			if(event.key == "Backspace"){
@@ -208,7 +227,9 @@ class Editor{
 		x = this.snap(x, y)[0]
 		y = this.snap(x, y)[1]
 
-		EditLevel(this.sim, levelPlan, this.typeSelected, x, y, {text: "text", fireDelay: 1, bulletSpeed: 100, bounceAmount: 1})
+		let defaultObject = {text: "text", fireDelay: 1, bulletSpeed: 100, bounceAmount: 1, angle: 0, angleFixed: false, xVel: 0, yVel: 0};
+
+		return this.sim.addPiece(x, y, this.typeSelected, defaultObject);
 	}
 	delete(){
 		for (var i = 0; i < this.sim.pieceList.length;) {
