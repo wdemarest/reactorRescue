@@ -606,7 +606,7 @@
 						newPiece = (new Destructible(this, x, y))
 					}
 					if(type == "turret"){
-						newPiece = (new Turret(this, x, y, object.fireDelay, object.bulletSpeed, object.fireType, object.angle))
+						newPiece = (new Turret(this, x, y, object.fireDelay, object.bulletSpeed, object.fireType, object.angle, object.angleFixed))
 					}
 					if(type == "bullet"){
 						newPiece = (new Bullet(this, x, y, object.xVel, object.yVel))
@@ -995,13 +995,13 @@
 				}
 			}
 			class Turret extends Piece{
-				constructor(sim, x, y, fireDelay, bulletSpeed, fireType, angleDeg){
+				constructor(sim, x, y, fireDelay, bulletSpeed, fireType, angleDeg, angleFixed){
 					super("turret",sim, x, y)
 					debug.expectNum(fireDelay, "fireDelay")
 					debug.expectNum(bulletSpeed, "bulletSpeed")
 					this.fireType = (fireType ? fireType : "bullet")
-					this.angleFixed = (angleDeg !== "auto");
-					this.angle = (angleDeg === "auto" ? 0 : degToRad(angleDeg));
+					this.angleFixed = angleFixed == "true";
+					this.angle = angleDeg || 0;
 					this.sim = sim;
 					this.width = 100;
 					this.height = 100;

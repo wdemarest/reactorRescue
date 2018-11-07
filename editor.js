@@ -9,7 +9,19 @@ class Editor{
 		this.piecesSelected = []
 		this.snapInt = 50;
 		this.active = false;
-		this.planAttrs = {type: true, x: true, y: true, text: true, fireDelay: true, bulletSpeed: true, bounceAmount: true, angle: true}
+		this.planAttrs = {
+			type: true,
+			x: true,
+			y: true,
+			text: true,
+			fireDelay: true,
+			bulletSpeed: true,
+			bounceAmount: true,
+			angle: (angle) => Math.round(angle*100)/100,
+			angleFixed: true,
+			xVel: true,
+			yVel: true
+		};
 	}
 	open(){
 		this.sim.pieceList = [];
@@ -30,6 +42,7 @@ class Editor{
 		initControls(this.sim);
 		$(document).off(".editorControls")
 		console.log("u closs da thange!")
+		this.piecesSelected = [];
 	}
 	snap(x, y){
 		x /= this.snapInt;
@@ -130,7 +143,7 @@ class Editor{
 				this.close()
 			}
 			if(event.key == "0"){
-				this.setType("text")
+				this.setType("blower")
 			}
 			if(event.key == "1"){
 				this.setType("reactor");
@@ -157,7 +170,7 @@ class Editor{
 				this.setType("bullet");
 			}
 			if(event.key == "9"){
-				this.setType("blower");
+				this.setType("phaseBullet");
 			}
 		}.bind(scope))
 	}
@@ -170,10 +183,12 @@ class Editor{
 		$("#attributeBoxes").empty()
 		let piece = this.piecesSelected[0];
 		for (let attr in piece){
-			if(this.planAttrs[attr] && attr != "type"){
+			let a = this.planAttrs[attr];
+			if(a && attr != "type"){
 				let span = $('<span>'+attr+': </span>');
 				let input = $('<input type="text" id="nameInput"></input>').appendTo(span);
-				input.val(piece[attr]);
+				let n = ( typeof a !== 'function' ? piece[attr] : a(piece[attr]) );
+				input.val(n);
 				input.on("keypress.editorGroup", null, function(event){
 					let val = $(this, "input").val();
 					if( typeof 0+val === "number"){
