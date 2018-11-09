@@ -1,6 +1,7 @@
 <html>
 	<head>
 		<link rel="stylesheet" type="text/css" href="minireset.css">
+		<link rel="shortcut icon" type="image/png" href="images/reactor.png"/>
 		<style type="text/css">
 			html, body{
 				height: 100%;
@@ -220,13 +221,17 @@
 				showLevelBuilder: false,
 				demoLevelLimit: 9,
 				editorDebug: true,
-				zOrders: {text: -1, particle: 0, blower: 1, reactor: 2, bullet: 3, mine: 4, destructible: 5, turret: 6, barricade: 7, bouncer: 7, gate: 8, receptical: 8}
+				zOrders: {text: -1, particle: 0, blower: 1, reactor: 2, bullet: 3, mine: 4, destructible: 5, turret: 6, barricade: 7, bouncer: 7, gate: 8, checkPoint: 8, receptical: 8}
 			};
 
 			let canvasWidth;
 			let canvasHeight;
 			let handleView;
 			let handleInterval;
+
+			let respawnCoords = null;
+
+			let storedTime = 0;
 
  			let debug = new Debug;
 
@@ -259,16 +264,16 @@
 				}
 
 				//Corners
-				if(pieceX < sx && pieceY < sy && calcDist(pieceX, pieceY, sx, sy) < pieceHitBoxRadius){
+				if(pieceX <= sx && pieceY <= sy && calcDist(pieceX, pieceY, sx, sy) < pieceHitBoxRadius){
 					return true;
 				}
-				if(pieceX > ex && pieceY < sy && calcDist(pieceX, pieceY, ex, sy) < pieceHitBoxRadius){
+				if(pieceX >= ex && pieceY <= sy && calcDist(pieceX, pieceY, ex, sy) < pieceHitBoxRadius){
 					return true;
 				}
-				if(pieceX > sx && pieceY < ey && calcDist(pieceX, pieceY, sx, ey) < pieceHitBoxRadius){
+				if(pieceX <= sx && pieceY >= ey && calcDist(pieceX, pieceY, sx, ey) < pieceHitBoxRadius){
 					return true;
 				}
-				if(pieceX > ex && pieceY < ey && calcDist(pieceX, pieceY, ex, ey) < pieceHitBoxRadius){
+				if(pieceX >= ex && pieceY >= ey && calcDist(pieceX, pieceY, ex, ey) < pieceHitBoxRadius){
 					return true;
 				}
 			}
@@ -425,12 +430,12 @@
  				demoRecords[i]  = { time: 999, userName: 'demo' };
  			}
 
- 			let testProgress = [];
- 			let testRecords = [];
- 			for( let i=0 ; i<LevelList.length ; ++i ) {
- 				testProgress[i] = { time: 3*60 };
- 				testRecords[i]  = { time: 999, userName: 'tester' };
- 			}
+			let testProgress = [];
+			let testRecords = [];
+			for( let i=0 ; i<LevelList.length ; ++i ) {
+				testProgress[i] = { time: 3*60 };
+				testRecords[i]  = { time: 999, userName: 'tester' };
+			}
 
 			let progressGet = function(callback) {
 
@@ -570,7 +575,7 @@
  			class Sim{
  				constructor(board){
  					this.board = board;
- 					this.elapsedTime = 0;
+ 					this.elapsedTime = storedTime;
  					this.pieceList = [];
 
 					this.nowPrior = null;
@@ -590,6 +595,9 @@
 					}
 					if(type == "gate"){
 						newPiece = (new Gate(this, x, y))
+					}
+					if(type == "checkPoint"){
+						newPiece = (new CheckPoint(this, x, y))
 					}
 					if(type == "receptical"){
 						newPiece = (new Receptical(this, x, y))
@@ -633,6 +641,10 @@
  					return this.find("reactor");
  				}
  				tick(dt){
+					this.piecesBlown(dt);
+					if(this.piecesTouched() == "next level"){
+						return "next level"
+					}
 					this.elapsedTime += dt;
 					this.pieceList.forEach(piece => piece.tick(dt))
 					for (var i = 0; i < this.pieceList.length; i++){
@@ -644,7 +656,6 @@
 				makePieceListFromSource(pieceSource){
 					for (let i = 0; i < pieceSource.length; i++) {
  						let object = pieceSource[i];
-					
 						this.addPiece(object.x, object.y, object.type, object)
 					}
 				}
@@ -749,21 +760,28 @@
 						this.health -= effect.amount;
 					}
 					if(effect.type == "bounce"){
-						//this.health -= 10;
-						if(Math.abs(effect.x - this.x) > Math.abs(effect.y - this.y)){
-							if(this.x > effect.x && this.xVel < 0){
-								this.xVel *= -effect.amount;
+						if(this.xVel !== 0 || this.yVel !== 0){
+							let bounced = false;
+							if(Math.abs(effect.x - this.x) > Math.abs(effect.y - this.y)){
+								if(this.x > effect.x && this.xVel < 0){
+									this.xVel *= -effect.amount;
+									bounced = true;
+								}
+								if(this.x < effect.x && this.xVel > 0){
+									this.xVel *= -effect.amount;
+									bounced = true;
+								}
+							}else{
+								if(this.y > effect.y && this.yVel < 0){
+									this.yVel *= -effect.amount;
+									bounced = true;
+								}
+								if(this.y < effect.y && this.yVel > 0){
+									this.yVel *= -effect.amount;
+									bounced = true;
+								}
 							}
-							if(this.x < effect.x && this.xVel > 0){
-								this.xVel *= -effect.amount;
-							}
-						}else{
-							if(this.y > effect.y && this.yVel < 0){
-								this.yVel *= -effect.amount;
-							}
-							if(this.y < effect.y && this.yVel > 0){
-								this.yVel *= -effect.amount;
-							}
+							if(bounced){soundBank.play("bounce")}
 						}
 					}
 					if(effect.type == "win" && this.type == "reactor" && !this.warping){
@@ -772,6 +790,13 @@
 						this.y = effect.y;
 						this.warpPhase = this.warpDuration;
 						return "next level";
+					}
+					if(effect.type == "checkPoint" && this.type == "reactor" && !this.warping){
+						if(!respawnCoords || effect.x != respawnCoords.x || effect.y != respawnCoords.y){
+							storedTime = this.sim.elapsedTime;
+							respawnCoords = {x: effect.x, y: effect.y}
+							soundBank.play("checkPoint")
+						}
 					}
 					if(effect.type == "attach" && this.type == "reactor"){
 						if(!this.attached){
@@ -847,6 +872,10 @@
 			class Reactor extends Piece{
 				constructor(sim, x, y){
 					super("reactor", sim, x, y)
+					if(respawnCoords){
+						this.x = respawnCoords.x;
+						this.y = respawnCoords.y;
+					}
 					this.mass = 25;
 					this.width = 40;
 					this.height = 40;
@@ -925,6 +954,38 @@
 					new Force(this.sim, this.x, this.y, xVel, yVel, radToDeg(particleAngle)+180)
 				}*/
 			}
+			class CheckPoint extends Piece{
+				constructor(sim, x, y){
+					super("checkPoint", sim, x, y)
+					this.width = 80;
+					this.height = 80;
+					this.hitBoxRadius = 30;
+					this.blowable = false;
+					this.effect = {type: "checkPoint", x: this.x, y: this.y};
+				}
+				get on(){
+					if (respawnCoords) {
+						if(this.x == respawnCoords.x && this.y == respawnCoords.y){
+							return true;
+						}
+					}
+					return false;
+				}
+				draw(context, camera){
+					let pieceSpec = {
+						piece: this,
+						x: this.x,
+						y: this.y,
+						width: this.width,
+						height: this.height,
+						xAnchor: 0.5,
+						yAnchor: 0.5
+					};
+					let image = (this.on ? Img["checkPointOn"] : Img["checkPointOff"])
+					context.draw(pieceSpec, image, camera)
+
+				}
+			}
 			class Receptical extends Piece{
 				constructor(sim, x, y){
 					super("receptical", sim, x, y)
@@ -968,6 +1029,7 @@
 					this.hitBoxRadius = 45;
 					this.blowable = false;
 					this.effect = {type: "damage", amount: 10};
+					this.surviveOutOfBounds = true;
 				}
 			}
 			class Bouncer extends Piece{
@@ -979,6 +1041,7 @@
 					this.bounceAmount = bounceAmount;
 					this.blowable = false;
 					this.effect = {type: "bounce"};
+					this.surviveOutOfBounds = true;
 				}
 				tick(dt){
 					this.effect = {type: "bounce", x: this.x, y: this.y, amount: this.bounceAmount};
@@ -1002,7 +1065,7 @@
 					debug.expectNum(fireDelay, "fireDelay")
 					debug.expectNum(bulletSpeed, "bulletSpeed")
 					this.fireType = (fireType ? fireType : "bullet")
-					this.angleFixed = angleFixed == "true";
+					this.angleFixed = angleFixed == "true" || angleFixed == true;
 					this.angle = angleDeg;
 					this.sim = sim;
 					this.width = 100;
@@ -1079,6 +1142,7 @@
 					this.condition = condition;
 					this.blowable = false;
 					this.effect = {type: "none"};
+					this.surviveOutOfBounds = true;
 				}
 				draw(context, camera){
 					let conditionMet = false;
@@ -1098,6 +1162,10 @@
  			class Blower extends Piece{
 				constructor(sim, x, y, control){
 					super("blower", sim, x, y)
+					if(respawnCoords){
+						this.x = respawnCoords.x;
+						this.y = respawnCoords.y;
+					}
 					this.width = 50;
 					this.height = 50;
 					this.hitBoxRadius = 25;
@@ -1388,6 +1456,8 @@
 				blower: 'images/mover.png',
 				reactor: 'images/reactor.png',
 				gate: 'images/gate.png',
+				checkPointOn: 'images/checkPointOn.png',
+				checkPointOff: 'images/checkPointOff.png',
 				receptical: 'images/receptical.png',
 				mine: 'images/mine.png',
 				barricade: 'images/barricade.png',
@@ -1426,10 +1496,12 @@
 					soundBank.load("explosionSmall","sound/explosionSmall2.wav");
 					soundBank.load("shot","sound/shot.wav", 0.5);
 					soundBank.load("click","sound/click.mp3", 3);
+					soundBank.load("checkPoint","sound/checkPoint.wav", 3);
 					soundBank.load("charging","sound/charging.wav", 0.75);
 					soundBank.load("turnOn","sound/turnOn.mp3", 4);
 					soundBank.load("warpIn","sound/warpIn.wav", 3);
 					soundBank.load("warpOut","sound/warpOut.wav", 5);
+					soundBank.load("bounce","sound/bounce.mp3", 5);
 					soundBank.load("woosh","sound/sunDiscThrowerImpact.wav");
 					soundBank.loadLoop("repulse",{
 						src: "sound/repulse.wav",
@@ -1594,7 +1666,7 @@
 				for (let i = 0; i < LevelList.length; i++) {
 					let levelDisable = (i>0 && progress[i] === undefined);
 					let cls 	= levelDisable ? ' levelDisable' : '';
-					let action 	= levelDisable ? '' : 'onClick="startGameMusic(); GameStart('+i+');"';
+					let action 	= levelDisable ? '' : 'onClick="startGameMusic(); respawnCoords = null; storedTime = 0; GameStart('+i+');"';
 					$("#levelRoster").append(
 						'<button class="menuButton levelButton '+cls+'" '+action+'>'+(i+1)+'</button>'
 					);
@@ -1621,6 +1693,7 @@
 				});
 				$('.buttonNextLevel').on( 'click.gameOver', null, () => {
 					GameClear();
+					respawnCoords = null; storedTime = 0;
 					GameStart(level+1);
 				});
 
@@ -1766,22 +1839,19 @@
 					}
 
 					sim.timeSinceLastSim = 0;
-					let dt;
+					let dt = 1/FPS;
 					let now = Date.now();
 					if(sim.nowPrior === null){
-						dt = 1.0/FPS;
+						sim.timeSinceLastSim = dt;
 					}else{
-						dt = (now - sim.nowPrior)/1000;
+						sim.timeSinceLastSim += (now - sim.nowPrior)/1000;
 					}
 					sim.nowPrior = now;
-					sim.timeSinceLastSim += dt;
-					while(sim.timeSinceLastSim > 1/FPS){
-						sim.piecesBlown(dt);
-						if(sim.piecesTouched() == "next level"){
+					while(sim.timeSinceLastSim >= dt){
+						if(sim.tick(dt) == "next level"){
 							return "next level"
 						}
-						sim.tick(1/FPS);
-						sim.timeSinceLastSim -= 1/FPS;
+						sim.timeSinceLastSim -= dt;
 					}
 				}
  				function tickView(){

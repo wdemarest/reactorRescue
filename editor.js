@@ -10,18 +10,18 @@ class Editor{
 		this.snapInt = 50;
 		this.active = false;
 		this.planAttrs = {
-			type: true,
-			x: true,
-			y: true,
-			text: true,
-			fireDelay: true,
-			bulletSpeed: true,
-			bounceAmount: true,
-			fireType: true,
-			angle: (angle) => Math.round(angle*100)/100,
-			angleFixed: true,
-			xVel: true,
-			yVel: true
+			type: "string",
+			x: "num",
+			y: "num",
+			text: "string",
+			fireDelay: "num",
+			bulletSpeed: "num",
+			bounceAmount: "num",
+			fireType: "string",
+			angle: "num",
+			angleFixed: "string",
+			xVel: "num",
+			yVel: "num"
 		};
 	}
 	open(){
@@ -73,6 +73,7 @@ class Editor{
 			this.deselect(true)
 			this.piecesSelected.push(piece);
 		}
+		this.renderPanel()
 	}
 	deselect(param1){
 		if(param1 === true){
@@ -129,6 +130,12 @@ class Editor{
 		$("#editorPanel").on("click.editorControls", null, (event)=>{
 			stopEvent(event);
 		});
+		$("#editorPanel").on("mousedown.editorControls", null, (event)=>{
+			stopEvent(event);
+		});
+		$("#editorPanel").on("mouseup.editorControls", null, (event)=>{
+			stopEvent(event);
+		});
 		$( document ).on("mousemove.editorControls", null, function( event ) {
 			mouseX = event.pageX+blower.x-canvasWidth/2;
 			mouseY = event.pageY+blower.y-canvasHeight/2;
@@ -169,6 +176,9 @@ class Editor{
 				this.setType("reactor");
 			}
 			if(event.key == "2"){
+				this.setType("checkPoint");
+			}
+			if(event.key == "@"){
 				this.setType("gate");
 			}
 			if(event.key == "3"){
@@ -211,8 +221,8 @@ class Editor{
 				input.val(n);
 				input.on("keypress.editorGroup", null, function(event){
 					let val = $(this, "input").val();
-					if( typeof 0+val === "number"){
-						val += 0;
+					if( a === "num"){
+						val = parseInt(val);
 					}
 					piece[attr] = val;
 				});
