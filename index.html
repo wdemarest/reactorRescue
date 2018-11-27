@@ -1,6 +1,6 @@
 <html>
 	<head>
-		<link rel="stylesheet" type="text/css" href="minireset.css">
+		<link rel="stylesheet" type="text/css" href="minireset.css"/>
 		<link rel="shortcut icon" type="image/png" href="images/reactor.png"/>
 		<style type="text/css">
 			html, body{
@@ -159,6 +159,7 @@
 				float: right;
 			}
 			#editorPanel{
+				display: none;
 				background-color: white;
 				padding: 5px;
 				color: black;
@@ -196,13 +197,12 @@
 		<script src="debug.js" charset="utf-8"></script>
 		<script src="editor.js" charset="utf-8"></script>
 		<script src="howler2.js" charset="utf-8"></script>
+		<script src="JSONSafeStringify.js" charset="utf-8"></script>
 		<script>
-			let Rules = {boardSize: 2000}
 			let FPS = 60;
-			let counter = 0;
 			
 
-			let ruleSet = {
+			let Rules = {
 				speedMod: 3,
 				blowRange: 200,
 				blowForce: 100,
@@ -211,17 +211,18 @@
 				playerSpeed: 500,
 				runningGameSpeed: 0.5,
 				gameSpeed: 0,
+				defaultBoundaryMargin: 50,
 				volume: 0.1,
 				musicVolume: 0.03,
 				isDemo: window.location.href.indexOf('demo')>=0,
 				isTest: window.location.href.indexOf('localhost')>=0,
-				startLevel: 1,
+				isEditing: window.location.href.indexOf('edit')>=0,
+				startLevel: 32,
 				isCinematic: false,
-				isEditor: false,
 				showLevelBuilder: false,
+				boundaryShowRange: 100,
 				demoLevelLimit: 9,
-				editorDebug: true,
-				zOrders: {text: -1, particle: 0, blower: 1, reactor: 2, bullet: 3, mine: 4, destructible: 5, turret: 6, barricade: 7, bouncer: 7, gate: 8, checkPoint: 8, receptical: 8}
+				zOrders: {boundary: -2, text: -1, particle: 0, blower: 1, reactor: 2, bullet: 3, mine: 4, destructible: 5, turret: 6, barricade: 7, bouncer: 7, gate: 8, checkPoint: 8, receptical: 8}
 			};
 
 			let canvasWidth;
@@ -235,7 +236,6 @@
 
  			let debug = new Debug;
 
-			Rules = Object.assign(Rules, ruleSet);
 			let Records = {
 				you: [],
 				best: [],
@@ -310,6 +310,7 @@
 				}
 				return this;
 			}
+
 			let soundBank = new SoundBank;
 			$(document).on('click',".menuButton", function(){
 				soundBank.play("click");
@@ -340,10 +341,6 @@
 				let dx = (x1-x2);
 				let dy = (y1-y2);
 				return Math.abs(Math.sqrt(Math.pow(dx, 2)+Math.pow(dy, 2)))
-			}
-			function pickRandom(list){
-				let seed = randInt(list.length);
-				return list[seed]
 			}
 			function calcAngle(x1, y1, x2, y2){
 				let dx = (x2-x1);
@@ -439,36 +436,34 @@
 
 			let progressGet = function(callback) {
 
-				function fetch(callback) {
-					if( Rules.isDemo ) {
-						setTimeout( function() { 
-							callback(demoProgress);
-						}, 1 );
-						return;
-					}
-					if( Rules.isTest ) {
-						setTimeout( function() { 
-							callback(testProgress);
-						}, 1 );
-						return;
-					}
-					internet.ajax({
-						url: '/progressRr',
-						method: 'GET',
-						contentType:"application/json; charset=utf-8",
-						data: {},
-					}, callback );
-				}
-
-				fetch( function(progress) {
+				function establishPersonalRecords(progress) {
 					var i = 0;
 					while(progress[i] && progress[i].time < timeFail && i < LevelList.length-1){
 						Records.you[i] = Records.you[i] || {};
 						Records.you[i].time = progress[i].time;
 						i ++;
 					}
+				}
+
+				function processData(progress){
+					establishPersonalRecords(progress);
 					callback(progress);
-				});
+				}
+
+				if( Rules.isDemo ) {
+					return setTimeout( ()=>processData(demoProgress), 1 );
+				}
+				if( Rules.isTest ) {
+					return setTimeout( ()=>processData(testProgress), 1 );
+				}
+				internet.ajax({
+					url: '/progressRr',
+					method: 'GET',
+					contentType:"application/json; charset=utf-8",
+					data: {},
+				}, processData
+				);
+
 			}
 
 			let progressSave = function(levelNumber,time,callback) {
@@ -508,7 +503,7 @@
 
 			let recordsGet = function(callback) {
 
-				function doAssign(records) {
+				function establishBestRecords(records) {
 					for( let i=0 ; i<LevelList.length ; ++i ) {
 						Records.best[i] = records[i];
 					}
@@ -516,23 +511,17 @@
 				}
 
 				if( Rules.isDemo ) {
-					setTimeout( function() { 
-						doAssign(demoRecords);
-					}, 1 );
-					return;
+					return setTimeout( ()=>establishBestRecords(demoRecords), 1 );
 				}
 				if( Rules.isTest ) {
-					setTimeout( function() { 
-						doAssign(testRecords);
-					}, 1 );
-					return;
+					return setTimeout( ()=>establishBestRecords(testRecords), 1 );
 				}
 				internet.ajax({
 					url: '/recordsRr',
 					method: 'GET',
 					contentType:"application/json; charset=utf-8",
 					data: {},
-				}, doAssign );
+				}, establishBestRecords );
 			}
 
 
@@ -552,29 +541,8 @@
 					}
 				}
 			}
-
-			class Board{
-				constructor(size){
-					this.size = size;
- 					this.earthIsOn = false;
-				}
-				pickRandomLocation(){
-					return Math.random()*this.size-(this.size/2)
-				}
-				get xMin() { return -this.size/2; }
-				get xMax() { return this.size/2; }
-				get yMin() { return -this.size/2; }
-				get yMax() { return this.size/2; }
-				contains(x,y) {
-					return x>=this.xMin && x<=this.xMax && y>=this.yMin && y<=this.yMax;
-				}
-				clamp(x,y) {
-					return [Math.min(Math.max(x,this.xMin),this.xMax),Math.min(Math.max(y,this.yMin),this.yMax)];
-				}
-			}
  			class Sim{
- 				constructor(board){
- 					this.board = board;
+ 				constructor(){
  					this.elapsedTime = storedTime;
  					this.pieceList = [];
 
@@ -583,7 +551,7 @@
 
  					this.editor = new Editor(this);
 
- 					this.makePieceListFromSource(levelPlan.pieceSource)
+ 					this.makePieceListFromSource(levelPlan.pieceSource, levelPlan.boundaryMargin)
  				}
 				addPiece(x, y, type, object){
 					let newPiece;
@@ -626,6 +594,7 @@
 					if(type == "text"){
 						newPiece = (new Text(this, x, y, object.text, object.condition))
 					}
+					debug.assert(newPiece, "invalid piece type", type)
 					return newPiece;
 				}
 				find(type){
@@ -653,11 +622,23 @@
 						}
 					}
 				}
-				makePieceListFromSource(pieceSource){
+				makePieceListFromSource(pieceSource, boundaryMargin){
 					for (let i = 0; i < pieceSource.length; i++) {
  						let object = pieceSource[i];
 						this.addPiece(object.x, object.y, object.type, object)
 					}
+
+					let reactorLastPosition = [0,0];
+					this.boundary = new Boundary(
+						this,
+						boundaryMargin !== undefined ? boundaryMargin : Rules.defaultBoundaryMargin,
+						() => {
+							if( this.reactor ) {
+								reactorLastPosition = [this.reactor.x, this.reactor.y];
+							}
+							return reactorLastPosition;
+						}
+					)
 				}
  				piecesBlown(dt){
  					let blower = this.blower;
@@ -804,7 +785,7 @@
 							soundBank.playLoop("victoryMusic")
 							soundBank.play("woosh")
 							soundBank.play("charging")
-							setTimeout(()=>{this.sim.board.earthIsOn = true; soundBank.play("turnOn")}, 7500)
+							setTimeout(()=>{this.sim.boundary.earthIsOn = true; soundBank.play("turnOn")}, 7500)
 							setTimeout(()=>this.sim.blower.credits = true, 12500)
 						}
 						this.x = effect.x;
@@ -839,7 +820,7 @@
 							this.applyFriction(dt)
 						}
 
-						if( !this.sim.board.contains(this.x,this.y) && !this.surviveOutOfBounds) {
+						if( !this.sim.boundary.contains(this.x, this.y, this.width, this.height) && !this.surviveOutOfBounds) {
 							this.dead = true;
 						}
 
@@ -866,6 +847,105 @@
 							}
 						}
 					}
+				}
+			}
+
+			class Boundary{
+				constructor(sim, margin, getPayloadPositionFn){
+					this.margin = margin;
+					this.getPayloadPositionFn = getPayloadPositionFn;
+					debug.expectNum(this.margin, "margin not a number")
+					this.sim = sim;
+					this.earthIsOn = false;
+					debug.assert(this.sim.pieceList.length, "make boundary after pieceList init")
+					this.resize()
+				}
+				setMargin(margin){
+					debug.expectNum(margin, "margin not num")
+					this.margin = margin;
+					this.resize();
+				}
+				resize(){
+					this.top = null;
+					this.bottom = null;
+					this.left = null;
+					this.right = null;
+					for (let i = 0; i < this.sim.pieceList.length; i++) {
+						let piece = this.sim.pieceList[i]
+						if(this.top === null || piece.y < this.top){
+							this.top = piece.y;
+						}
+						if(this.bottom === null || piece.y > this.bottom){
+							this.bottom = piece.y;
+						}
+						if(this.left === null || piece.x < this.left){
+							this.left = piece.x;
+						}
+						if(this.right === null || piece.x > this.right){
+							this.right = piece.x;
+						}
+					}
+					if(this.top === null){
+						this.top = -100;
+						this.bottom = 100;
+						this.left = -100;
+						this.right = 100;
+					}
+					debug.expectNum(this.margin, "margin")
+					this.top -= this.margin;
+					this.bottom += this.margin;
+					this.left -= this.margin;
+					this.right += this.margin;
+				}
+				get xMin() { return this.left; }
+				get xMax() { return this.right; }
+				get yMin() { return this.top; }
+				get yMax() { return this.bottom; }
+				get width() { return this.xMax-this.xMin; }
+				get height() { return this.yMax-this.yMin; }
+				contains(x, y, width, height) {
+					width /= 2;
+					height /= 2;
+
+					if(width && height){
+						return x-width>=this.xMin && x+width<=this.xMax && y-height>=this.yMin && y+height<=this.yMax;
+					}
+					return x>=this.xMin && x<=this.xMax && y>=this.yMin && y<=this.yMax;
+				}
+				clamp(x,y) {
+					debug.expectNum(this.top, "top")
+					debug.expectNum(this.bottom, "bottom")
+					debug.expectNum(this.left, "left")
+					debug.expectNum(this.right, "right")
+					return [Math.min(Math.max(x,this.xMin),this.xMax),Math.min(Math.max(y,this.yMin),this.yMax)];
+				}
+				draw(context, camera){
+
+					let alpha;
+
+					if(this.sim.editor.active){
+						alpha = 1;
+					}else{
+						let x;
+						let y;
+						[x,y] = this.getPayloadPositionFn()
+						debug.expectNum(x, "x");
+						debug.expectNum(y, "y");
+						let xMinDist = Math.abs(x - this.xMin);
+						let xMaxDist = Math.abs(x - this.xMax);
+						let yMinDist = Math.abs(y - this.yMin);
+						let yMaxDist = Math.abs(y - this.yMax);
+						alpha = Math.min(xMinDist, xMaxDist, yMinDist, yMaxDist);
+						alpha *= -1;
+						alpha += Rules.boundaryShowRange;
+						alpha /= Rules.boundaryShowRange;
+					}
+
+					context.beginPath();
+					context.lineWidth="6";
+					context.strokeStyle="rgba(255,0,0,"+alpha+")";
+					context.rect(this.xMin-(camera.x-canvasWidth/2), this.yMin-(camera.y-canvasHeight/2), this.width, this.height);
+					context.stroke();
 				}
 			}
 
@@ -997,7 +1077,7 @@
 					this.particleCount = 0;
 				}
 				particleTick(dt){
-					if(this.sim.reactor.attached && !this.sim.board.earthIsOn){
+					if(this.sim.reactor.attached && !this.sim.boundary.earthIsOn){
 						this.particleCount += 0.5;
 					}
 					for(var i = 0; i < dt*this.particleCount*Rules.gameSpeed; i++) {
@@ -1146,7 +1226,7 @@
 				}
 				draw(context, camera){
 					let conditionMet = false;
-					if(this.condition == "power" && this.sim.board.earthIsOn){
+					if(this.condition == "power" && this.sim.boundary.earthIsOn){
 						conditionMet = true;
 					}
 					if((!this.condition || conditionMet) && !Rules.isCinematic){
@@ -1204,7 +1284,7 @@
 					if(dDown || (this.credits && this.x < 0)){
 						this.x += this.speed*dt*Rules.gameSpeed;
 					}
-					[this.x,this.y] = this.sim.board.clamp(this.x,this.y);
+					[this.x,this.y] = this.sim.boundary.clamp(this.x,this.y);
 				}
 				particleTick(dt){
 					if(Rules.gameSpeed){
@@ -1239,15 +1319,6 @@
 					if(this.health <= 0 && !this.warping){
 						this.dead = true;
 					}
-				}
-				grow(amount){
-					this.length += amount*Rules.growSpeedMod*(this.speed+this.tempSpeed)/100;
-				}
-				speedBoost(amount){
-					this.tempSpeed += amount*Rules.speedBoostMod;
-				}
-				strengthen(amount){
-					this.strength += amount*Rules.strengthAddMod;
 				}
 				setTarget(x, y){
 					this.angle = calcAngle(this.x, this.y, x, y);
@@ -1408,7 +1479,9 @@
 				});
 				$( document ).on("keyup.controls", null, function( event ) {
 					if( event.key == 'e' || event.key == 'E') {
-						sim.editor.open()
+						if(window.location.href.indexOf('localhost')>=0 && Rules.isEditing){
+							sim.editor.open()
+						}
 					}
 				});
 				$( document ).on("keydown.controls", null, function( event ) {
@@ -1553,7 +1626,7 @@
 						}
 					},1)
 				}
- 				myCanvas(canvasId, board, middleWare){
+ 				myCanvas(canvasId, boundary, middleWare){
 					var canvas = document.getElementById(canvasId);
 					var context = canvas.getContext('2d');
 					context.middleWare = middleWare;
@@ -1563,16 +1636,19 @@
 					context.clear = function(camera){
 						if( levelPlan.backgroundImg && levelPlan.backgroundImg.complete ) {
 							let img = levelPlan.backgroundImg;
-							let xPct = (camera.x - board.xMin) / (board.size + context.canvas.width);
-							let yPct = (camera.y - board.yMin) / (board.size + context.canvas.height);
+							let xPct = (camera.x - boundary.xMin) / (boundary.width + context.canvas.width);
+							let yPct = (camera.y - boundary.yMin) / (boundary.height + context.canvas.height);
 							let bx = img.width * 0.40 * xPct;
 							let by = img.height * 0.40 * yPct;
 							let bw = img.width * 0.60;
 							let bh = img.height * 0.60;
+							debug.expectNum(bx, "bx");
+							debug.expectNum(by, "by");
+							debug.expectNum(bw, "bw");
+							debug.expectNum(bh, "bh");
 							this.drawImage(img, bx, by, bw, bh, 0, 0, canvas.width, canvas.height);
-						}
-						else {
-							let backgroundName = levelPlan.background ? (board.earthIsOn ? "earthOn" : "earthOff") : "background";
+						} else {
+							let backgroundName = levelPlan.background ? (boundary.earthIsOn ? "earthOn" : "earthOff") : "background";
 							let backgroundImg = Img[backgroundName];
 							this.drawImage(backgroundImg, 0, 0, canvas.width, canvas.height);
 						}
@@ -1622,7 +1698,7 @@
 					}.bind(context)*/
 					return context
 				}
- 				render(context, pieceList, camera){
+ 				render(context, camera, pieceList, boundary){
 					context.clear(camera);
  					pieceList.sort(function(a, b){return b.z - a.z});
  					for(let i = 0; i < pieceList.length; i++){
@@ -1631,6 +1707,7 @@
 							pieceList[i].draw(context, camera)
 						}
 					}
+					boundary.draw(context, camera)
 				}
 			}
  			//ORGANIZATION
@@ -1666,7 +1743,7 @@
 				for (let i = 0; i < LevelList.length; i++) {
 					let levelDisable = (i>0 && progress[i] === undefined);
 					let cls 	= levelDisable ? ' levelDisable' : '';
-					let action 	= levelDisable ? '' : 'onClick="startGameMusic(); respawnCoords = null; storedTime = 0; GameStart('+i+');"';
+					let action 	= levelDisable ? '' : 'id="levelButton'+i+'" onClick="startGameMusic(); respawnCoords = null; storedTime = 0; GameStart('+i+');"';
 					$("#levelRoster").append(
 						'<button class="menuButton levelButton '+cls+'" '+action+'>'+(i+1)+'</button>'
 					);
@@ -1747,7 +1824,6 @@
  				$(document).off(".controls")
  			}
  			function GameClear(){
- 				window.animateView = false;
  				clearInterval(handleInterval);
  				handleInterval = null;
  				cancelAnimationFrame(handleView)
@@ -1815,14 +1891,13 @@
 				level = newLevel;
 				levelPlan = LevelList[level];
 				let view = new View();
-				let board = new Board(levelPlan.boardSize || Rules.boardSize);
-				let sim = new Sim(board);
+				let sim = new Sim();
 				let middleWare = function(context, piece, x, y, w, h){
 					if(sim.editor.isSelected(piece)){
 						context.drawHighlight(x, y, w, h);
 					}
 				}
-				let context = view.myCanvas('canvas', board, middleWare);
+				let context = view.myCanvas('canvas', sim.boundary, middleWare);
 				initControls(sim);
 				if( levelPlan.backgroundUrl ) {
 					levelPlan.backgroundImg = new Image();
@@ -1830,7 +1905,7 @@
 				}
 
 				function tickSim(){
-					if( !sim.gameFailLatch && !sim.reactor && !levelPlan.editorTemplate){
+					if( !sim.gameFailLatch && !sim.reactor && !Rules.isEditing){
 						sim.gameFailLatch = true;
 						setTimeout(() => {
 							GameOver()
@@ -1857,15 +1932,14 @@
  				function tickView(){
  					let camera = {};
  					if(sim.blower){
-					camera.x = sim.blower.x;
-					camera.y = sim.blower.y;
+						camera.x = sim.blower.x;
+						camera.y = sim.blower.y;
  					}else{
  						camera.x = 0;
  						camera.y = 0;
  					}
  
-					view.render(context, sim.pieceList, camera);
-					//view.renderMinimap(context, sim);
+					view.render(context, camera, sim.pieceList, sim.boundary);
 				}
 
 				$("#titleScreen").hide()
@@ -1888,7 +1962,6 @@
 					//console.log('animView request');
 					animDone = true;
 				}
-				window.animateView = true;
 				//console.log('animView start');
  				animateView();
  				function silly() {
@@ -1912,10 +1985,10 @@
 				}, 1)
 			}
 
-			function checkEditorDebug(){
-				if(!Rules.editorDebug){return}
+			function checkEditing(){
+				if(!Rules.isEditing){return}
 				triggerWhenReady("#levelSelectButton", "click")
-				triggerWhenReady("#levelRoster button:nth-child("+Rules.startLevel+")", "click")
+				triggerWhenReady("#levelButton"+(Rules.startLevel-1), "click")
 				var press = jQuery.Event("keyup");
 				press.ctrlKey = false;
 				press.key = "e";
@@ -1951,7 +2024,7 @@
 						$('#titleButtons').show();
 						startMenuMusic()
 						displayTitleScreen();
-						checkEditorDebug();
+						checkEditing();
 					});
 				});
 				onResize();
@@ -2081,7 +2154,7 @@
 			<div id="editorPanel">
 				<div> Placing type: <span id="placingType"></span></div>
 				<div id="attributeBoxes"></div>
-				<button id="showDataButton">Show Data</button>
+				<button id="showDataButton">Save</button>
 				<button id="hideDataButton">Hide Data</button>
 				<div id="levelData"></div>
 			</div>

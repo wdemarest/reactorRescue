@@ -27,6 +27,7 @@ class Debug{
 		}
 	}
 	expectNum(variable, message, data){
+		this.assert(typeof variable == "number", message, data)
 		this.assert(!isNaN(variable), message, data)
 	}
 }

@@ -9,6 +9,7 @@ class Editor{
 		this.piecesSelected = []
 		this.snapInt = 50;
 		this.active = false;
+		this.data = null;
 		this.planAttrs = {
 			type: "string",
 			x: "num",
@@ -26,7 +27,7 @@ class Editor{
 	}
 	open(){
 		this.sim.pieceList = [];
-		this.sim.makePieceListFromSource(levelPlan.pieceSource)
+		this.sim.makePieceListFromSource(levelPlan.pieceSource, levelPlan.boundaryMargin)
 		this.hideData();
 		this.active = true;
 		Rules.gameSpeed = 0;
@@ -37,6 +38,7 @@ class Editor{
 	}
 	close(){
 		levelPlan.pieceSource = this.renderData();
+		levelPlan.boundaryMargin = this.sim.boundary.margin;
 		this.active = false
 		Rules.gameSpeed = Rules.runningGameSpeed;
 		$("#editorPanel").hide()
@@ -121,7 +123,7 @@ class Editor{
 		let blower = this.sim.blower;
 		let scope = this;
 
-		$("#showDataButton").on("click.editorControls", null, ()=>this.showData());
+		$("#showDataButton").on("click.editorControls", null, ()=>this.saveLevel());
 		$("#hideDataButton").on("click.editorControls", null, ()=>this.hideData());
 
 		$("#editorPanel").on("keyup.editorControls", null, (event)=>{
@@ -158,6 +160,7 @@ class Editor{
 					[piece.x, piece.y] = this.snap(piece.x, piece.y);
 				}
 			}
+			this.sim.boundary.resize()
 		}.bind(scope));
 		$( document ).on("keyup.editorControls", null, function( event ) {
 			if(event.key == "Backspace"){
@@ -212,6 +215,37 @@ class Editor{
 
 		$("#attributeBoxes").empty()
 		let piece = this.piecesSelected[0];
+		
+		let margin = this.sim.boundary.margin;
+		let span = $('<span>Boundary Margin: </span>');
+		let input = $('<input type="text" id="nameInput"/>').appendTo(span).val(margin);
+
+		let self = this;
+
+		function setMarginFromInput(){
+			let val = $(input).val();
+			let margin = parseInt(val)
+
+			if(isNaN(margin)){
+				margin = 0;
+				$(input).val(margin);
+			}
+
+			self.sim.boundary.setMargin(margin)
+		}
+		
+		input.on("keypress.editorGroup", null, function(event){
+			if(event.key == "Enter"){
+				setMarginFromInput()
+			}
+		});
+		input.on("blur.editorGroup", null, function(event){
+			setMarginFromInput()
+		});
+
+
+		span.appendTo("#attributeBoxes");
+
 		for (let attr in piece){
 			let a = this.planAttrs[attr];
 			if(a && attr != "type"){
@@ -225,6 +259,7 @@ class Editor{
 						val = parseInt(val);
 					}
 					piece[attr] = val;
+					this.sim.boundary.resize()
 				});
 				span.appendTo("#attributeBoxes");
 			}
@@ -233,6 +268,19 @@ class Editor{
 	}
 	chooseType(typeNum){
 		this.typeSelected = typeList[typeNum];
+	}
+	saveLevel(){
+		let payload = {
+			levelName: levelPlan.name,
+			pieceList: this.renderData(),
+		}
+		console.log(payload)
+		internet.ajax({
+			url: '/rrpack',
+			method: 'POST',
+			contentType:"application/json; charset=utf-8",
+			data: JSON.stringify(payload)
+		}, ()=>{});
 	}
 	place(x, y){
 		x = this.snap(x, y)[0]
