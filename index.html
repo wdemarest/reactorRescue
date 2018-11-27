@@ -610,6 +610,9 @@
  					return this.find("reactor");
  				}
  				tick(dt){
+ 					if(this.editor.active){
+ 						this.boundary.resize();
+ 					}
 					this.piecesBlown(dt);
 					if(this.piecesTouched() == "next level"){
 						return "next level"
@@ -723,6 +726,18 @@
 					this.hitBoxRadius;
 					this.effect;
 					this.collider = true;
+				}
+				get xMin() {
+					return this.x - (this.hitBoxRadius===undefined ? this.width/2 : this.hitBoxRadius);
+				}
+				get xMax() {
+					return this.x + (this.hitBoxRadius===undefined ? this.width/2 : this.hitBoxRadius);
+				}
+				get yMin() {
+					return this.y - (this.hitBoxRadius===undefined ? this.height/2 : this.hitBoxRadius);
+				}
+				get yMax() {
+					return this.y + (this.hitBoxRadius===undefined ? this.height/2 : this.hitBoxRadius);
 				}
 				draw(context, camera){
 					let pieceSpec = {
@@ -871,18 +886,22 @@
 					this.left = null;
 					this.right = null;
 					for (let i = 0; i < this.sim.pieceList.length; i++) {
-						let piece = this.sim.pieceList[i]
-						if(this.top === null || piece.y < this.top){
-							this.top = piece.y;
+						let piece = this.sim.pieceList[i];
+						let ignorePieceTypes = { text: 1 };
+						if( ignorePieceTypes[piece.type] ){
+							continue;
 						}
-						if(this.bottom === null || piece.y > this.bottom){
-							this.bottom = piece.y;
+						if(this.left === null || piece.xMin < this.left){
+							this.left = piece.xMin;
 						}
-						if(this.left === null || piece.x < this.left){
-							this.left = piece.x;
+						if(this.right === null || piece.xMax > this.right){
+							this.right = piece.xMax;
 						}
-						if(this.right === null || piece.x > this.right){
-							this.right = piece.x;
+						if(this.top === null || piece.yMin < this.top){
+							this.top = piece.yMin;
+						}
+						if(this.bottom === null || piece.yMax > this.bottom){
+							this.bottom = piece.yMax;
 						}
 					}
 					if(this.top === null){
@@ -1075,16 +1094,20 @@
 					this.blowable = false;
 					this.effect = {type: "attach", x: this.x, y: this.y};
 					this.particleCount = 0;
+					this.surviveOutOfBounds = true;
 				}
 				particleTick(dt){
-					if(this.sim.reactor.attached && !this.sim.boundary.earthIsOn){
-						this.particleCount += 0.5;
+					if(this.sim.reactor){
+						if(this.sim.reactor.attached && !this.sim.boundary.earthIsOn){
+							this.particleCount += 0.5;
+						}
 					}
 					for(var i = 0; i < dt*this.particleCount*Rules.gameSpeed; i++) {
 						if(Math.random()>0.1){
 							new Electricity(this.sim, this.x+((Math.random()-0.5)*40), this.y+((Math.random()-0.5)*40)-50, 0, 0, 0)
 						}
 					}
+
 
 				}
 			}

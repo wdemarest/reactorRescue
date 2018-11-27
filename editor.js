@@ -178,6 +178,9 @@ class Editor{
 			if(event.key == "1"){
 				this.setType("reactor");
 			}
+			if(event.key == "!"){
+				this.setType("receptical");
+			}
 			if(event.key == "2"){
 				this.setType("checkPoint");
 			}
@@ -266,9 +269,6 @@ class Editor{
 		}
 		$("#editorPanel").show()
 	}
-	chooseType(typeNum){
-		this.typeSelected = typeList[typeNum];
-	}
 	saveLevel(){
 		let payload = {
 			levelName: levelPlan.name,
@@ -287,6 +287,8 @@ class Editor{
 		y = this.snap(x, y)[1]
 
 		let defaultObject = {text: "text", fireDelay: 1, bulletSpeed: 100, bounceAmount: 1, angle: 0, angleFixed: false, xVel: 0, yVel: 0};
+
+		let piece = this.sim.addPiece(x, y, this.typeSelected, defaultObject);
 
 		return this.sim.addPiece(x, y, this.typeSelected, defaultObject);
 	}
