@@ -34,13 +34,15 @@ function MakeLevelList(){
 //		"images/background/machinePlanet.jpg"
 //	];
 
+	let LevelBlank = {
+		name: "Blank",
+		pieceSource: [
+			{type: "blower", x: 0, y: 0},
+			{type: "reactor", x: 100, y: 100},
+		],
+	};
+
 	let LevelList = [
-		{
-			name: "Blank",
-			pieceSource: [
-				{type: "blower", x: 0, y: 0},
-			],
-		},
 		{
 			name: "Tutorial: Controls",
 			pieceSource: [
@@ -49,12 +51,12 @@ function MakeLevelList(){
 				{type: "reactor", x: 920, y: 800},
 
 				{type: "text", x: -300, y: -800, text: "Press w, a, s, and d to move your ship."},
-				{type: "text", x: -300, y: -700, text: "Go bottom until you see more instructions."},
+				{type: "text", x: -300, y: -700, text: "Go down until you see more instructions."},
 				{type: "text", x: -300, y: -200, text: "Move the mouse to turn your ship."},
-				{type: "text", x: -300, y: -150, text: "Keep going bottom."},
-				{type: "text", x: -300, y: 200, text: "Hold bottom the mouse to activate your repulser field."},
-				{type: "text", x: -300, y: 250, text: "bottom again."},
-				{type: "text", x: -300, y: 600, text: "Try hitting escape on your keyboundary."},
+				{type: "text", x: -300, y: -150, text: "Keep going down."},
+				{type: "text", x: -300, y: 200, text: "Hold down the mouse to activate your repulser field."},
+				{type: "text", x: -300, y: 250, text: "Go down again."},
+				{type: "text", x: -300, y: 600, text: "Try hitting Escape on your keyboard."},
 				{type: "text", x: -300, y: 650, text: "Go to the right this time."},
 				{type: "text", x: 625, y: 600, text: "Great! Now use your repulser field"},
 				{type: "text", x: 625, y: 640, text: "to push the reactor into the Gate."},
@@ -713,7 +715,7 @@ function MakeLevelList(){
 				{type: "turret", x: 0, y: 1000, fireDelay: 0.75, bulletSpeed: 500},
 
 				{type: "text", x: -200, y: -950, text: "The gate is way below you."},
-				{type: "text", x: -225, y: -850, text: "There's a turret bottom there BTW."},
+				{type: "text", x: -225, y: -850, text: "There's a turret down there BTW."},
 			],
 		},
 		{

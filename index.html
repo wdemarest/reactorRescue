@@ -211,7 +211,8 @@
 				playerSpeed: 500,
 				runningGameSpeed: 0.5,
 				gameSpeed: 0,
-				defaultBoundaryMargin: 50,
+				minBoundaryMargin: 50,
+				timeFail: 9999,
 				volume: 0.1,
 				musicVolume: 0.03,
 				isDemo: window.location.href.indexOf('demo')>=0,
@@ -438,9 +439,9 @@
 
 				function establishPersonalRecords(progress) {
 					var i = 0;
-					while(progress[i] && progress[i].time < timeFail && i < LevelList.length-1){
+					while(progress[i] && progress[i].time < Rules.timeFail && i < LevelList.length-1){
 						Records.you[i] = Records.you[i] || {};
-						Records.you[i].time = progress[i].time;
+						Records.you[i].time = progress[i].time || Rules.timeFail;
 						i ++;
 					}
 				}
@@ -505,7 +506,10 @@
 
 				function establishBestRecords(records) {
 					for( let i=0 ; i<LevelList.length ; ++i ) {
-						Records.best[i] = records[i];
+						Records.best[i] = records[i] || {time: Rules.timeFail};
+						if( !Records.best[i].time ) {
+							Records.best[i].time = Rules.timeFail;
+						}
 					}
 					callback();
 				}
@@ -626,6 +630,8 @@
 					}
 				}
 				makePieceListFromSource(pieceSource, boundaryMargin){
+					console.assert( boundaryMargin !== null && boundaryMargin !== undefined );
+
 					for (let i = 0; i < pieceSource.length; i++) {
  						let object = pieceSource[i];
 						this.addPiece(object.x, object.y, object.type, object)
@@ -634,7 +640,7 @@
 					let reactorLastPosition = [0,0];
 					this.boundary = new Boundary(
 						this,
-						boundaryMargin !== undefined ? boundaryMargin : Rules.defaultBoundaryMargin,
+						boundaryMargin,
 						() => {
 							if( this.reactor ) {
 								reactorLastPosition = [this.reactor.x, this.reactor.y];
@@ -1736,7 +1742,7 @@
  			//ORGANIZATION
  			function getTimeTable(elapsedTime,andCounting) {
  				let time = timeReadable(elapsedTime); //this is to get just 1 decimal point of detail.
-				let timeYou = Records.you[level] && Records.you[level].time ? timeReadable(Records.you[level].time) : '?.?';
+				let timeYou = Records.you[level] && Records.you[level].time ? timeReadable(Records.you[level].time) : ( andCounting ? '?.?' : timeReadable(elapsedTime) );
 				let timeBest = Records.best[level] && Records.best[level].time ? timeReadable(Records.best[level].time) : '?.?';
 				let userBest = Records.best[level] && Records.best[level].userName ? Records.best[level].userName : '';
 				let s = ''+
@@ -1800,6 +1806,7 @@
 				if(win){
 					progressSave( level, elapsedTime, function() {
 						$('#gameWin').show();
+						$('#gameSummaryWin').hide();
 						$('#gameWin button').hide();
 						$('#gameSaving').show();
 
@@ -1808,7 +1815,6 @@
 
 						progressGet( function() {
 							recordsGet( function() {
-
 								let isRecord = elapsedTime == Records.best[level].time;
 
 								let notify = isRecord ? 'You set the World Record!!!' : (isPersonalBest ? 'A new Personal Best!' : '');
@@ -1822,6 +1828,7 @@
 									notify+
 									getTimeTable(elapsedTime,false)
 								);
+								$('#gameSummaryWin').show();
 
 								$('#gameSaving').hide();
 								$('#gameWin button').show();
@@ -1884,12 +1891,10 @@
 				$("#overlayMenu").hide()
 			}
 
-			let timeFail = 9999;
-
 			function GameStart(forceLevel) {
 				progressGet( function(progress) {
 					var i = 0;
-					while(progress[i] && progress[i].time < timeFail && i < LevelList.length-1){
+					while(progress[i] && progress[i].time < Rules.timeFailtimeFail && i < LevelList.length-1){
 						i ++;
 					}
 					if( forceLevel !== undefined && forceLevel !== null ) {
@@ -1902,6 +1907,13 @@
 			}
 
  			function GameMain(newLevel){
+
+ 				function getLevelPlan(level) {
+ 					let levelPlan = LevelList[level];
+ 					levelPlan.boundaryMargin = Math.max( levelPlan.boundaryMargin || 0, Rules.minBoundaryMargin );
+ 					return levelPlan;
+ 				}
+
  				soundBank.play("warpIn")
 				UnpauseGame()
 				//level = prompt("Which level would you like to play?");
@@ -1912,7 +1924,8 @@
 
 				$("#menus").hide()
 				level = newLevel;
-				levelPlan = LevelList[level];
+				console.log('Loading level plan',level);
+				levelPlan = getLevelPlan(level);
 				let view = new View();
 				let sim = new Sim();
 				let middleWare = function(context, piece, x, y, w, h){
