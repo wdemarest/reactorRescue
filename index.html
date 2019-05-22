@@ -211,7 +211,8 @@
 				playerSpeed: 500,
 				runningGameSpeed: 0.5,
 				gameSpeed: 0,
-				minBoundaryMargin: 50,
+				defaultBoundaryMargin: 250,
+				minBoundaryMargin: 15,
 				timeFail: 9999,
 				volume: 0.1,
 				musicVolume: 0.03,
@@ -1910,7 +1911,7 @@
 
  				function getLevelPlan(level) {
  					let levelPlan = LevelList[level];
- 					levelPlan.boundaryMargin = Math.max( levelPlan.boundaryMargin || 0, Rules.minBoundaryMargin );
+ 					levelPlan.boundaryMargin = Math.max( levelPlan.boundaryMargin!==undefined ? (levelPlan.boundaryMargin || 0) : Rules.defaultBoundaryMargin, Rules.minBoundaryMargin );
  					return levelPlan;
  				}
 
